@@ -55,13 +55,21 @@ class MainPanel extends JPanel {
         character.setBorderPainted(false);
         character.setFocusPainted(false);
 
-        // Position buttons in center vertically with proper spacing
+
+
         int screenCenterX = bgIcon.getIconWidth() / 2;
         int screenCenterY = bgIcon.getIconHeight() / 2;
 
-        // Calculate positions to center both buttons
+
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
-        int characterX = screenCenterX - characterIcon.getIconWidth() / 2;
+        int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
+
+
+        start.setLocation(startX, screenCenterY - 50);
+        character.setLocation(characterX, screenCenterY - 50);
+
+        // อย่าลืม add
+        add(start);
 
         start.setLocation(startX, screenCenterY - 50); // START button in center
 
@@ -101,8 +109,8 @@ class MainPanel extends JPanel {
             gameCharacterBtn.setBorderPainted(false);
             gameCharacterBtn.setFocusPainted(false);
 
-            int gameCharacterX = bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2;
-            int gameCharacterY = bgIcon.getIconHeight() / 2 -50;
+            int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
+            int gameCharacterY = bgIcon.getIconHeight() / 2 - 50 ;
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
 
             // Add character action to game frame button
