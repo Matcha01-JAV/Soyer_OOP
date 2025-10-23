@@ -22,14 +22,20 @@ class MainFrame extends JFrame {
 }
 
 class MainPanel extends JPanel {
-    ImageIcon bgIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-            + File.separator + "game" + File.separator + "BG.png");
+    ImageIcon bgIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "BG.png");
     Image bg = bgIcon.getImage();
 
-    ImageIcon startIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP"+ File.separator + "src"
-            + File.separator + "game" + File.separator + "Start.png");
-    ImageIcon characterIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP"+ File.separator + "src"
-            + File.separator + "game" + File.separator + "Character.png");
+    ImageIcon startIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "Start.png");
+    ImageIcon characterIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "Character.png");
+    ImageIcon okIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "OK.png");
     JButton start = new JButton(startIcon);
     JButton character = new JButton(characterIcon);
 
@@ -55,20 +61,14 @@ class MainPanel extends JPanel {
         character.setBorderPainted(false);
         character.setFocusPainted(false);
 
-
-
         int screenCenterX = bgIcon.getIconWidth() / 2;
         int screenCenterY = bgIcon.getIconHeight() / 2;
-
 
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
 
-
         start.setLocation(startX, screenCenterY - 50);
         character.setLocation(characterX, screenCenterY - 50);
-
-
 
         add(start);
 
@@ -112,30 +112,68 @@ class MainPanel extends JPanel {
             gameCharacterBtn.setFocusPainted(false);
 
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
-            int gameCharacterY = bgIcon.getIconHeight() / 2 - 50 ;
+            int gameCharacterY = bgIcon.getIconHeight() / 2 - 50;
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
 
             int textWidth = 220, textHeight = 40;
             JTextField nameField = new JTextField("Input name...");
-            nameField.setFont(new Font("Arial", Font.PLAIN, 18));
+
+            // Enhanced text field styling
+            nameField.setFont(new Font("Arial", Font.BOLD, 20));
             nameField.setHorizontalAlignment(JTextField.CENTER);
-            nameField.setSize(310, 70);
-            int nameX = characterX - textWidth - 120; // ห่าง 20 px จากปุ่ม
+            nameField.setSize(350, 60);
+
+            // Beautiful styling
+            nameField.setBackground(new Color(255, 255, 255, 230)); // Semi-transparent white
+            nameField.setForeground(new Color(50, 50, 50)); // Dark gray text
+            nameField.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createRaisedBevelBorder(), // Outer raised border
+                    BorderFactory.createEmptyBorder(8, 15, 8, 15) // Inner padding
+            ));
+
+            // Add rounded corners effect with custom border
+            nameField.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(100, 149, 237), 3, true), // Cornflower blue border
+                    BorderFactory.createEmptyBorder(10, 15, 10, 15) // Inner padding
+            ));
+
+            // Add focus styling
+            nameField.setCaretColor(new Color(100, 149, 237)); // Blue caret
+            nameField.setSelectionColor(new Color(173, 216, 230)); // Light blue selection
+
+            int nameX = characterX - textWidth - 140; // Adjusted for new width
             int nameY = screenCenterY - textHeight / 2 + 8;
 
-            JButton okButton = new JButton("OK");
-            okButton.setFont(new Font("Arial", Font.BOLD, 20));
+            // Add placeholder text behavior
+            nameField.addFocusListener(new java.awt.event.FocusAdapter() {
+                @Override
+                public void focusGained(java.awt.event.FocusEvent evt) {
+                    if (nameField.getText().equals("Input name...")) {
+                        nameField.setText("");
+                        nameField.setForeground(new Color(50, 50, 50));
+                    }
+                }
+
+                @Override
+                public void focusLost(java.awt.event.FocusEvent evt) {
+                    if (nameField.getText().isEmpty()) {
+                        nameField.setText("Input name...");
+                        nameField.setForeground(new Color(150, 150, 150));
+                    }
+                }
+            });
+
+            // Set initial placeholder color
+            nameField.setForeground(new Color(150, 150, 150));
+
+            JButton okButton = new JButton(okIcon);
+            okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight());
+            okButton.setOpaque(false);
+            okButton.setContentAreaFilled(false);
+            okButton.setBorderPainted(false);
             okButton.setFocusPainted(false);
-            okButton.setContentAreaFilled(true); // ให้มีพื้นหลัง
-            okButton.setBackground(new Color(255, 215, 0)); // สีทองดูเด่นๆ
-            okButton.setForeground(Color.BLACK);
 
-            int okWidth = characterIcon.getIconWidth() / 2;
-            int okHeight = 50;
-            int okX = nameX + (nameField.getWidth() - okWidth) / 2;
-            int okY = nameY + nameField.getHeight() + 20;
-
-            okButton.setBounds(300, 400, 200, 70);
+            okButton.setBounds(300, 400, okIcon.getIconWidth(), okIcon.getIconHeight());
 
             gamePanel.add(okButton);
             nameField.setLocation(nameX, nameY);
