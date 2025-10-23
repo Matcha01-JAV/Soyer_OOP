@@ -22,13 +22,13 @@ class MainFrame extends JFrame {
 }
 
 class MainPanel extends JPanel {
-    ImageIcon bgIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "src"
+    ImageIcon bgIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
             + File.separator + "game" + File.separator + "BG.png");
     Image bg = bgIcon.getImage();
 
-    ImageIcon startIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "src"
+    ImageIcon startIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP"+ File.separator + "src"
             + File.separator + "game" + File.separator + "Start.png");
-    ImageIcon characterIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "src"
+    ImageIcon characterIcon = new ImageIcon(System.getProperty("user.dir") + File.separator + "Game_OOP"+ File.separator + "src"
             + File.separator + "game" + File.separator + "Character.png");
     JButton start = new JButton(startIcon);
     JButton character = new JButton(characterIcon);
