@@ -186,7 +186,7 @@ class MainPanel extends JPanel {
                     return;
                 }
 
-                gameFrame.setVisible(false);
+                //gameFrame.setVisible(false);
 
                 characterFrame = new JFrame("Character Selection");
                 characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -197,6 +197,15 @@ class MainPanel extends JPanel {
                 JLabel label = new JLabel("Character Selection", JLabel.CENTER);
                 label.setFont(new Font("Arial", Font.BOLD, 20));
                 characterFrame.add(label);
+
+                JLabel bgLabel = new JLabel(bgIcon);
+                bgLabel.setLayout(new BorderLayout());
+                characterFrame.setContentPane(bgLabel);
+
+                JLabel labelch = new JLabel("Character Selection", JLabel.CENTER);
+                labelch.setFont(new Font("Arial", Font.BOLD, 24));
+                labelch.setForeground(Color.WHITE);
+                labelch.add(label, BorderLayout.CENTER);
 
                 characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
