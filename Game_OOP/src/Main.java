@@ -24,8 +24,12 @@ class MainFrame extends JFrame {
 class MainPanel extends JPanel {
     ImageIcon bgIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "BG.png");
+                    + File.separator + "game" + File.separator + "newbg.png");
     Image bg = bgIcon.getImage();
+    ImageIcon bgIcon2 = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "ch.png");
+    Image bg2 = bgIcon2.getImage();
 
     ImageIcon startIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
@@ -47,7 +51,7 @@ class MainPanel extends JPanel {
         setLayout(null); // Use absolute positioning
 
         // Set button sizes to match their images
-        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight());
+        start.setSize(startIcon.getIconWidth()-20, startIcon.getIconHeight()-70);
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         // Make buttons transparent (image only)
@@ -67,12 +71,12 @@ class MainPanel extends JPanel {
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
 
-        start.setLocation(startX, screenCenterY - 50);
+        // start.setLocation(startX, getY());
         character.setLocation(characterX, screenCenterY - 50);
 
         add(start);
 
-        start.setLocation(startX, screenCenterY - 50); // START button in center
+        start.setLocation(startX, getHeight() + 400); // START button in center
 
         // Add action listeners
         start.addActionListener(e -> {
@@ -105,14 +109,14 @@ class MainPanel extends JPanel {
             // Add character button to game frame
             JButton gameCharacterBtn = new JButton(characterIcon);
 
-            gameCharacterBtn.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
+            gameCharacterBtn.setSize(characterIcon.getIconWidth() - 20 , characterIcon.getIconHeight() - 60);
             gameCharacterBtn.setOpaque(false);
             gameCharacterBtn.setContentAreaFilled(false);
             gameCharacterBtn.setBorderPainted(false);
             gameCharacterBtn.setFocusPainted(false);
 
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
-            int gameCharacterY = bgIcon.getIconHeight() / 2 - 50;
+            int gameCharacterY = bgIcon.getIconHeight() / 2 + 70; // Moved down by 100px
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
 
             int textWidth = 220, textHeight = 40;
@@ -124,16 +128,17 @@ class MainPanel extends JPanel {
             nameField.setSize(350, 60);
 
             // Beautiful styling
-            nameField.setBackground(new Color(255, 255, 255, 230)); // Semi-transparent white
-            nameField.setForeground(new Color(50, 50, 50)); // Dark gray text
-            nameField.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createRaisedBevelBorder(), // Outer raised border
-                    BorderFactory.createEmptyBorder(8, 15, 8, 15) // Inner padding
-            ));
+            nameField.setBackground(new Color(142, 104, 84, 255)); // Semi-transparent white
+            nameField.setForeground(new Color(0, 0, 0)); // Dark gray text
+            nameField.setOpaque(true);
+            // nameField.setBorder(BorderFactory.createCompoundBorder(
+            // BorderFactory.createRaisedBevelBorder(), // Outer raised border
+            // BorderFactory.createEmptyBorder(8, 15, 8, 15) // Inner padding
+            // ));
 
             // Add rounded corners effect with custom border
             nameField.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(100, 149, 237), 3, true), // Cornflower blue border
+                    BorderFactory.createLineBorder(new Color(85, 85, 85), 3, true), // Cornflower blue border
                     BorderFactory.createEmptyBorder(10, 15, 10, 15) // Inner padding
             ));
 
@@ -142,7 +147,7 @@ class MainPanel extends JPanel {
             nameField.setSelectionColor(new Color(173, 216, 230)); // Light blue selection
 
             int nameX = characterX - textWidth - 140; // Adjusted for new width
-            int nameY = screenCenterY - textHeight / 2 + 8;
+            int nameY = screenCenterY - textHeight / 2 + 108; // Moved down by 100px to match character button
 
             // Add placeholder text behavior
             nameField.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -150,7 +155,7 @@ class MainPanel extends JPanel {
                 public void focusGained(java.awt.event.FocusEvent evt) {
                     if (nameField.getText().equals("Input name...")) {
                         nameField.setText("");
-                        nameField.setForeground(new Color(50, 50, 50));
+                        nameField.setForeground(new Color(0, 0, 0));
                     }
                 }
 
@@ -158,13 +163,13 @@ class MainPanel extends JPanel {
                 public void focusLost(java.awt.event.FocusEvent evt) {
                     if (nameField.getText().isEmpty()) {
                         nameField.setText("Input name...");
-                        nameField.setForeground(new Color(150, 150, 150));
+                        nameField.setForeground(new Color(0, 0, 0));
                     }
                 }
             });
 
             // Set initial placeholder color
-            nameField.setForeground(new Color(150, 150, 150));
+            nameField.setForeground(new Color(0, 0, 0));
 
             JButton okButton = new JButton(okIcon);
             okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight());
@@ -186,11 +191,11 @@ class MainPanel extends JPanel {
                     return;
                 }
 
-                //gameFrame.setVisible(false);
+                // gameFrame.setVisible(false);
 
                 characterFrame = new JFrame("Character Selection");
                 characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                characterFrame.setSize(500, 400);
+                characterFrame.setSize(500, 430);
                 characterFrame.setLocationRelativeTo(null);
                 characterFrame.setResizable(false);
 
@@ -198,7 +203,7 @@ class MainPanel extends JPanel {
                 label.setFont(new Font("Arial", Font.BOLD, 20));
                 characterFrame.add(label);
 
-                JLabel bgLabel = new JLabel(bgIcon);
+                JLabel bgLabel = new JLabel(bgIcon2);
                 bgLabel.setLayout(new BorderLayout());
                 characterFrame.setContentPane(bgLabel);
 
