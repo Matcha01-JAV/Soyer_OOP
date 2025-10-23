@@ -104,6 +104,7 @@ class MainPanel extends JPanel {
 
             // Add character button to game frame
             JButton gameCharacterBtn = new JButton(characterIcon);
+
             gameCharacterBtn.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
             gameCharacterBtn.setOpaque(false);
             gameCharacterBtn.setContentAreaFilled(false);
@@ -115,17 +116,28 @@ class MainPanel extends JPanel {
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
 
             int textWidth = 220, textHeight = 40;
-
-
             JTextField nameField = new JTextField("Input name...");
             nameField.setFont(new Font("Arial", Font.PLAIN, 18));
             nameField.setHorizontalAlignment(JTextField.CENTER);
-
             nameField.setSize(310, 70);
-
             int nameX = characterX - textWidth - 120; // ห่าง 20 px จากปุ่ม
             int nameY = screenCenterY - textHeight / 2 + 8;
 
+            JButton okButton = new JButton("OK");
+            okButton.setFont(new Font("Arial", Font.BOLD, 20));
+            okButton.setFocusPainted(false);
+            okButton.setContentAreaFilled(true); // ให้มีพื้นหลัง
+            okButton.setBackground(new Color(255, 215, 0)); // สีทองดูเด่นๆ
+            okButton.setForeground(Color.BLACK);
+
+            int okWidth = characterIcon.getIconWidth() / 2;
+            int okHeight = 50;
+            int okX = nameX + (nameField.getWidth() - okWidth) / 2;
+            int okY = nameY + nameField.getHeight() + 20;
+
+            okButton.setBounds(300, 400, 200, 70);
+
+            gamePanel.add(okButton);
             nameField.setLocation(nameX, nameY);
             gamePanel.add(nameField);
 
