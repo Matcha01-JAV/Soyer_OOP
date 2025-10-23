@@ -68,7 +68,8 @@ class MainPanel extends JPanel {
         start.setLocation(startX, screenCenterY - 50);
         character.setLocation(characterX, screenCenterY - 50);
 
-        // อย่าลืม add
+
+
         add(start);
 
         start.setLocation(startX, screenCenterY - 50); // START button in center
@@ -112,6 +113,21 @@ class MainPanel extends JPanel {
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
             int gameCharacterY = bgIcon.getIconHeight() / 2 - 50 ;
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
+
+            int textWidth = 220, textHeight = 40;
+
+
+            JTextField nameField = new JTextField("Input name...");
+            nameField.setFont(new Font("Arial", Font.PLAIN, 18));
+            nameField.setHorizontalAlignment(JTextField.CENTER);
+
+            nameField.setSize(310, 70);
+
+            int nameX = characterX - textWidth - 120; // ห่าง 20 px จากปุ่ม
+            int nameY = screenCenterY - textHeight / 2 + 8;
+
+            nameField.setLocation(nameX, nameY);
+            gamePanel.add(nameField);
 
             // Add character action to game frame button
             gameCharacterBtn.addActionListener(evt -> {
