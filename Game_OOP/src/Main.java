@@ -42,7 +42,7 @@ class MainPanel extends JPanel {
                     + File.separator + "game" + File.separator + "OK.png");
     JButton start = new JButton(startIcon);
     JButton character = new JButton(characterIcon);
-
+    private boolean StopBugmain = false;
     private JFrame characterFrame = null; // Track character frame
     private JFrame gameFrame = null; // Track game frame
 
@@ -51,19 +51,16 @@ class MainPanel extends JPanel {
         setLayout(null); // Use absolute positioning
 
         // Set button sizes to match their images
-        start.setSize(startIcon.getIconWidth()-20, startIcon.getIconHeight()-70);
+        start.setSize(startIcon.getIconWidth() - 20, startIcon.getIconHeight() - 70);
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         // Make buttons transparent (image only)
-        start.setOpaque(false);
-        start.setContentAreaFilled(false);
-        start.setBorderPainted(false);
-        start.setFocusPainted(false);
-
-        character.setOpaque(false);
-        character.setContentAreaFilled(false);
-        character.setBorderPainted(false);
-        character.setFocusPainted(false);
+        for (JButton b : new JButton[]{start, character}) {
+            b.setOpaque(false);
+            b.setContentAreaFilled(false);
+            b.setBorderPainted(false);
+            b.setFocusPainted(false);
+        }
 
         int screenCenterX = bgIcon.getIconWidth() / 2;
         int screenCenterY = bgIcon.getIconHeight() / 2;
@@ -71,31 +68,28 @@ class MainPanel extends JPanel {
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
 
-        // start.setLocation(startX, getY());
+        // วางตำแหน่ง
         character.setLocation(characterX, screenCenterY - 50);
-
         add(start);
+        // (ถ้าต้องการให้ปุ่ม character แสดง ให้ปลดคอมเมนต์บรรทัดถัดไป)
+        // add(character);
 
-        start.setLocation(startX, getHeight() + 400); // START button in center
+        start.setLocation(startX, getHeight() + 400);
 
         // Add action listeners
         start.addActionListener(e -> {
-            // Check if game frame is already open
             if (gameFrame != null && gameFrame.isDisplayable()) {
-                gameFrame.toFront(); // Bring existing frame to front
+                gameFrame.toFront();
                 return;
             }
 
-            // Hide main frame
             JFrame mainFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
             mainFrame.setVisible(false);
 
-            // Create new game frame with same background and character button
             gameFrame = new JFrame("Soyer VS Zombies - Game");
             gameFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             gameFrame.setResizable(false);
 
-            // Create game panel with same background and character button
             JPanel gamePanel = new JPanel() {
                 @Override
                 protected void paintComponent(Graphics g) {
@@ -105,52 +99,39 @@ class MainPanel extends JPanel {
             };
             gamePanel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
             gamePanel.setLayout(null);
+
             JButton backBtn = createBackButton(gameFrame, mainFrame);
             gamePanel.add(backBtn);
-            // Add character button to game frame
-            JButton gameCharacterBtn = new JButton(characterIcon);
 
-            gameCharacterBtn.setSize(characterIcon.getIconWidth() - 20 , characterIcon.getIconHeight() - 60);
+            JButton gameCharacterBtn = new JButton(characterIcon);
+            gameCharacterBtn.setSize(characterIcon.getIconWidth() - 20, characterIcon.getIconHeight() - 60);
             gameCharacterBtn.setOpaque(false);
             gameCharacterBtn.setContentAreaFilled(false);
             gameCharacterBtn.setBorderPainted(false);
             gameCharacterBtn.setFocusPainted(false);
 
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
-            int gameCharacterY = bgIcon.getIconHeight() / 2 + 70; // Moved down by 100px
+            int gameCharacterY = bgIcon.getIconHeight() / 2 + 70;
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
 
             int textWidth = 220, textHeight = 40;
             JTextField nameField = new JTextField("Input name...");
-
-            // Enhanced text field styling
             nameField.setFont(new Font("Arial", Font.BOLD, 20));
             nameField.setHorizontalAlignment(JTextField.CENTER);
             nameField.setSize(350, 60);
-
-            // Beautiful styling
-            nameField.setBackground(new Color(142, 104, 84, 255)); // Semi-transparent white
-            nameField.setForeground(new Color(0, 0, 0)); // Dark gray text
+            nameField.setBackground(new Color(142, 104, 84, 255));
+            nameField.setForeground(new Color(0, 0, 0));
             nameField.setOpaque(true);
-            // nameField.setBorder(BorderFactory.createCompoundBorder(
-            // BorderFactory.createRaisedBevelBorder(), // Outer raised border
-            // BorderFactory.createEmptyBorder(8, 15, 8, 15) // Inner padding
-            // ));
-
-            // Add rounded corners effect with custom border
             nameField.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(85, 85, 85), 3, true), // Cornflower blue border
-                    BorderFactory.createEmptyBorder(10, 15, 10, 15) // Inner padding
+                    BorderFactory.createLineBorder(new Color(85, 85, 85), 3, true),
+                    BorderFactory.createEmptyBorder(10, 15, 10, 15)
             ));
+            nameField.setCaretColor(new Color(100, 149, 237));
+            nameField.setSelectionColor(new Color(173, 216, 230));
 
-            // Add focus styling
-            nameField.setCaretColor(new Color(100, 149, 237)); // Blue caret
-            nameField.setSelectionColor(new Color(173, 216, 230)); // Light blue selection
+            int nameX = characterX - textWidth - 140;
+            int nameY = screenCenterY - textHeight / 2 + 108;
 
-            int nameX = characterX - textWidth - 140; // Adjusted for new width
-            int nameY = screenCenterY - textHeight / 2 + 108; // Moved down by 100px to match character button
-
-            // Add placeholder text behavior
             nameField.addFocusListener(new java.awt.event.FocusAdapter() {
                 @Override
                 public void focusGained(java.awt.event.FocusEvent evt) {
@@ -168,8 +149,6 @@ class MainPanel extends JPanel {
                     }
                 }
             });
-
-            // Set initial placeholder color
             nameField.setForeground(new Color(0, 0, 0));
 
             JButton okButton = new JButton(okIcon);
@@ -178,7 +157,6 @@ class MainPanel extends JPanel {
             okButton.setContentAreaFilled(false);
             okButton.setBorderPainted(false);
             okButton.setFocusPainted(false);
-
             okButton.setBounds(300, 400, okIcon.getIconWidth(), okIcon.getIconHeight());
 
             gamePanel.add(okButton);
@@ -186,16 +164,32 @@ class MainPanel extends JPanel {
             gamePanel.add(nameField);
 
             okButton.addActionListener(ev -> {
+                StopBugmain = true;
+                if (characterFrame != null)
+                {
+                    characterFrame.dispose();
+                    characterFrame = null;
+                }
+                if (gameFrame != null)
+                {
+                    gameFrame.dispose();
+                    gameFrame = null;
+                }
+                if (mainFrame != null)
+                {
+                    mainFrame.dispose();
+                }
 
-                        String name = nameField.getText();
-                        if ("Input name...".equals(name)) {
-                            name = "";
-                        }
+                String name = nameField.getText();
+                if ("Input name...".equals(name))
+                {
+                    name = "";
+                }
+
                 JFrame playFrame = new JFrame("Soyer VS Zombies");
                 playFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 playFrame.setResizable(false);
                 JLabel bgLabel = new JLabel(bgIcon);
-
                 bgLabel.setLayout(null);
                 bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
                 JButton backBtn1 = createBackButton(playFrame, gameFrame);
@@ -213,7 +207,6 @@ class MainPanel extends JPanel {
                 int btnWidth = startIcon.getIconWidth() - 25;
                 int btnHeight = startIcon.getIconHeight() - 75;
 
-
                 hostButton.setSize(btnWidth, btnHeight);
                 joinButton.setSize(btnWidth, btnHeight);
                 StartSolo.setSize(btnWidth, btnHeight);
@@ -225,17 +218,18 @@ class MainPanel extends JPanel {
                 joinButton.setLocation(centerX, centerY + 20);
                 StartSolo.setLocation(centerX, centerY + 140);
 
+
                 hostButton.setOpaque(true);
                 hostButton.setContentAreaFilled(true);
                 hostButton.setBorderPainted(false);
                 hostButton.setFocusPainted(false);
 
-                joinButton.setOpaque(false);
+                joinButton.setOpaque(true);
                 joinButton.setContentAreaFilled(true);
                 joinButton.setBorderPainted(false);
                 joinButton.setFocusPainted(false);
 
-                StartSolo.setOpaque(false);
+                StartSolo.setOpaque(true);
                 StartSolo.setContentAreaFilled(true);
                 StartSolo.setBorderPainted(false);
                 StartSolo.setFocusPainted(false);
@@ -244,20 +238,28 @@ class MainPanel extends JPanel {
                 bgLabel.add(joinButton);
                 bgLabel.add(StartSolo);
 
-                
+                StartSolo.addActionListener(ev3 -> {
+                    String input = nameField.getText();
+                    String playerName = "Player";
+                    if (input != null && !input.isBlank() && !input.equals("Input name...")) {
+                        playerName = input.trim();
+                    }
+                    final String finalName = playerName;
+                    playFrame.dispose();
+
+                    SwingUtilities.invokeLater(() -> new GameFrame(finalName));
+                    if (playFrame != null)
+                    {
+                        playFrame.dispose();
+                    }
+                });
             });
 
-
-
-
-            // Add character action to game frame button
             gameCharacterBtn.addActionListener(evt -> {
                 if (characterFrame != null && characterFrame.isDisplayable()) {
                     characterFrame.toFront();
                     return;
                 }
-
-                // gameFrame.setVisible(false);
 
                 characterFrame = new JFrame("Character Selection");
                 characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -282,7 +284,10 @@ class MainPanel extends JPanel {
                     @Override
                     public void windowClosed(java.awt.event.WindowEvent windowEvent) {
                         characterFrame = null;
-                        gameFrame.setVisible(true);
+                        // แสดงหน้า Start เฉพาะกรณี "ไม่ได้กำลังกดไปหน้าถัดไป"
+                        if (!false && mainFrame != null) {
+                            mainFrame.setVisible(true);
+                        }
                     }
                 });
 
@@ -294,20 +299,19 @@ class MainPanel extends JPanel {
             gameFrame.pack();
             gameFrame.setLocationRelativeTo(null);
 
-            // Add window listener to show main frame when game frame is closed
             gameFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
                 public void windowClosed(java.awt.event.WindowEvent windowEvent) {
                     gameFrame = null;
-                    mainFrame.setVisible(true); // Show main frame again
+                    if (!StopBugmain && mainFrame != null) {
+                        mainFrame.setVisible(true);
+                    }
                 }
             });
 
             gameFrame.setVisible(true);
         });
 
-        // Add only start button to main panel
-        add(start);
     }
 
     @Override
@@ -326,26 +330,18 @@ class MainPanel extends JPanel {
         backButton.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
         backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-
         backButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e)
+            {
                 backButton.setForeground(new Color(255, 200, 200));
             }
-
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent e) {
-                backButton.setForeground(Color.WHITE);
+            @Override public void mouseExited(java.awt.event.MouseEvent e)
+            { backButton.setForeground(Color.WHITE);
             }
         });
-
-        // Action: ปิดเฟรมปัจจุบัน แล้วแสดงเฟรมก่อนหน้า
         backButton.addActionListener(e -> {
             currentFrame.dispose();
-            if (previousFrame != null)
-            {
-                previousFrame.setVisible(true);
-            }
+            if (previousFrame != null) previousFrame.setVisible(true);
         });
 
         return backButton;
