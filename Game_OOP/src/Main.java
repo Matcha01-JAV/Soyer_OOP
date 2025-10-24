@@ -55,12 +55,15 @@ class MainPanel extends JPanel {
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         // Make buttons transparent (image only)
-        for (JButton b : new JButton[]{start, character}) {
-            b.setOpaque(false);
-            b.setContentAreaFilled(false);
-            b.setBorderPainted(false);
-            b.setFocusPainted(false);
-        }
+        start.setOpaque(false);
+        start.setContentAreaFilled(false);
+        start.setBorderPainted(false);
+        start.setFocusPainted(false);
+
+        character.setOpaque(false);
+        character.setContentAreaFilled(false);
+        character.setBorderPainted(false);
+        character.setFocusPainted(false);
 
         int screenCenterX = bgIcon.getIconWidth() / 2;
         int screenCenterY = bgIcon.getIconHeight() / 2;
