@@ -105,7 +105,8 @@ class MainPanel extends JPanel {
             };
             gamePanel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
             gamePanel.setLayout(null);
-
+            JButton backBtn = createBackButton(gameFrame, mainFrame);
+            gamePanel.add(backBtn);
             // Add character button to game frame
             JButton gameCharacterBtn = new JButton(characterIcon);
 
@@ -184,6 +185,71 @@ class MainPanel extends JPanel {
             nameField.setLocation(nameX, nameY);
             gamePanel.add(nameField);
 
+            okButton.addActionListener(ev -> {
+
+                        String name = nameField.getText();
+                        if ("Input name...".equals(name)) {
+                            name = "";
+                        }
+                JFrame playFrame = new JFrame("Soyer VS Zombies");
+                playFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                playFrame.setResizable(false);
+                JLabel bgLabel = new JLabel(bgIcon);
+
+                bgLabel.setLayout(null);
+                bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
+                JButton backBtn1 = createBackButton(playFrame, gameFrame);
+                bgLabel.add(backBtn1);
+
+                playFrame.setContentPane(bgLabel);
+                playFrame.pack();
+                playFrame.setLocationRelativeTo(null);
+                playFrame.setVisible(true);
+
+                JButton hostButton = new JButton("Host");
+                JButton joinButton = new JButton("Join");
+                JButton StartSolo = new JButton("StartSolo");
+
+                int btnWidth = startIcon.getIconWidth() - 25;
+                int btnHeight = startIcon.getIconHeight() - 75;
+
+
+                hostButton.setSize(btnWidth, btnHeight);
+                joinButton.setSize(btnWidth, btnHeight);
+                StartSolo.setSize(btnWidth, btnHeight);
+
+                int centerX = bgIcon.getIconWidth() / 2 - btnWidth / 2;
+                int centerY = bgIcon.getIconHeight() / 2;
+
+                hostButton.setLocation(centerX, centerY - 100);
+                joinButton.setLocation(centerX, centerY + 20);
+                StartSolo.setLocation(centerX, centerY + 140);
+
+                hostButton.setOpaque(true);
+                hostButton.setContentAreaFilled(true);
+                hostButton.setBorderPainted(false);
+                hostButton.setFocusPainted(false);
+
+                joinButton.setOpaque(false);
+                joinButton.setContentAreaFilled(true);
+                joinButton.setBorderPainted(false);
+                joinButton.setFocusPainted(false);
+
+                StartSolo.setOpaque(false);
+                StartSolo.setContentAreaFilled(true);
+                StartSolo.setBorderPainted(false);
+                StartSolo.setFocusPainted(false);
+
+                bgLabel.add(hostButton);
+                bgLabel.add(joinButton);
+                bgLabel.add(StartSolo);
+
+                
+            });
+
+
+
+
             // Add character action to game frame button
             gameCharacterBtn.addActionListener(evt -> {
                 if (characterFrame != null && characterFrame.isDisplayable()) {
@@ -248,5 +314,40 @@ class MainPanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         g.drawImage(bg, 0, 0, this);
+    }
+
+    private JButton createBackButton(JFrame currentFrame, JFrame previousFrame) {
+        JButton backButton = new JButton("← Back");
+        backButton.setFont(new Font("Arial", Font.BOLD, 18));
+        backButton.setForeground(Color.WHITE);
+        backButton.setBounds(15, 10, 100, 40);
+        backButton.setFocusPainted(false);
+        backButton.setContentAreaFilled(false);
+        backButton.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+        backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+
+        backButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                backButton.setForeground(new Color(255, 200, 200));
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                backButton.setForeground(Color.WHITE);
+            }
+        });
+
+        // Action: ปิดเฟรมปัจจุบัน แล้วแสดงเฟรมก่อนหน้า
+        backButton.addActionListener(e -> {
+            currentFrame.dispose();
+            if (previousFrame != null)
+            {
+                previousFrame.setVisible(true);
+            }
+        });
+
+        return backButton;
     }
 }
