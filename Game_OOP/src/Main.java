@@ -72,6 +72,7 @@ class MainPanel extends JPanel {
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
 
         // วางตำแหน่ง
+
         character.setLocation(characterX, screenCenterY - 50);
         add(start);
         // (ถ้าต้องการให้ปุ่ม character แสดง ให้ปลดคอมเมนต์บรรทัดถัดไป)
@@ -175,12 +176,7 @@ class MainPanel extends JPanel {
                 }
                 if (gameFrame != null)
                 {
-                    gameFrame.dispose();
-                    gameFrame = null;
-                }
-                if (mainFrame != null)
-                {
-                    mainFrame.dispose();
+                    gameFrame.setVisible(false);
                 }
 
                 String name = nameField.getText();
@@ -194,7 +190,9 @@ class MainPanel extends JPanel {
                 playFrame.setResizable(false);
                 JLabel bgLabel = new JLabel(bgIcon);
                 bgLabel.setLayout(null);
+
                 bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
+                
                 JButton backBtn1 = createBackButton(playFrame, gameFrame);
                 bgLabel.add(backBtn1);
 
@@ -259,6 +257,11 @@ class MainPanel extends JPanel {
             });
 
             gameCharacterBtn.addActionListener(evt -> {
+                StopBugmain = true;
+                if (mainFrame != null)
+                {
+                    mainFrame.dispose();
+                }
                 if (characterFrame != null && characterFrame.isDisplayable()) {
                     characterFrame.toFront();
                     return;
@@ -288,7 +291,7 @@ class MainPanel extends JPanel {
                     public void windowClosed(java.awt.event.WindowEvent windowEvent) {
                         characterFrame = null;
                         // แสดงหน้า Start เฉพาะกรณี "ไม่ได้กำลังกดไปหน้าถัดไป"
-                        if (!false && mainFrame != null) {
+                        if (!StopBugmain && mainFrame != null) {
                             mainFrame.setVisible(true);
                         }
                     }
