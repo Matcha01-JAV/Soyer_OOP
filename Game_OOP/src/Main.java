@@ -9,6 +9,7 @@ public class Main {
         frame.add(panel);
         frame.pack();
         frame.setLocationRelativeTo(null); // Center the frame on screen
+
         frame.setVisible(true);
     }
 }
@@ -18,6 +19,7 @@ class MainFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setResizable(false);
         setTitle("Soyer VS Zombies");
+
     }
 }
 
@@ -33,13 +35,22 @@ class MainPanel extends JPanel {
 
     ImageIcon startIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "Start.png");
+                    + File.separator + "game" + File.separator + "startnew.png");
     ImageIcon characterIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "Character.png");
+                    + File.separator + "game" + File.separator + "ch2.png");
     ImageIcon okIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "OK.png");
+                    + File.separator + "game" + File.separator + "ok2.png");
+    ImageIcon hostIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "host.png");
+    ImageIcon joinIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "join.png");
+    ImageIcon soloIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "solo.png");
     JButton start = new JButton(startIcon);
     JButton character = new JButton(characterIcon);
     private boolean StopBugmain = false;
@@ -51,7 +62,7 @@ class MainPanel extends JPanel {
         setLayout(null); // Use absolute positioning
 
         // Set button sizes to match their images
-        start.setSize(startIcon.getIconWidth() - 20, startIcon.getIconHeight() - 70);
+        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight());
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         // Make buttons transparent (image only)
@@ -78,7 +89,7 @@ class MainPanel extends JPanel {
         // (ถ้าต้องการให้ปุ่ม character แสดง ให้ปลดคอมเมนต์บรรทัดถัดไป)
         // add(character);
 
-        start.setLocation(startX, getHeight() + 400);
+        start.setLocation(startX - 15, getHeight() + 400);
 
         // Add action listeners
         start.addActionListener(e -> {
@@ -91,8 +102,9 @@ class MainPanel extends JPanel {
             mainFrame.setVisible(false);
 
             gameFrame = new JFrame("Soyer VS Zombies - Game");
-            gameFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            // gameFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             gameFrame.setResizable(false);
+            gameFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
             JPanel gamePanel = new JPanel() {
                 @Override
@@ -108,7 +120,7 @@ class MainPanel extends JPanel {
             gamePanel.add(backBtn);
 
             JButton gameCharacterBtn = new JButton(characterIcon);
-            gameCharacterBtn.setSize(characterIcon.getIconWidth() - 20, characterIcon.getIconHeight() - 60);
+            gameCharacterBtn.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight() - 70);
             gameCharacterBtn.setOpaque(false);
             gameCharacterBtn.setContentAreaFilled(false);
             gameCharacterBtn.setBorderPainted(false);
@@ -116,20 +128,19 @@ class MainPanel extends JPanel {
 
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
             int gameCharacterY = bgIcon.getIconHeight() / 2 + 70;
-            gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY);
+            gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY + 10);
 
             int textWidth = 220, textHeight = 40;
             JTextField nameField = new JTextField("Input name...");
             nameField.setFont(new Font("Arial", Font.BOLD, 20));
             nameField.setHorizontalAlignment(JTextField.CENTER);
             nameField.setSize(350, 60);
-            nameField.setBackground(new Color(142, 104, 84, 255));
-            nameField.setForeground(new Color(0, 0, 0));
+            nameField.setBackground(new Color(54, 54, 48, 255));
+            nameField.setForeground(new Color(210, 188, 148));
             nameField.setOpaque(true);
             nameField.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(85, 85, 85), 3, true),
-                    BorderFactory.createEmptyBorder(10, 15, 10, 15)
-            ));
+                    BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+                    BorderFactory.createEmptyBorder(10, 15, 10, 15)));
             nameField.setCaretColor(new Color(100, 149, 237));
             nameField.setSelectionColor(new Color(173, 216, 230));
 
@@ -141,7 +152,7 @@ class MainPanel extends JPanel {
                 public void focusGained(java.awt.event.FocusEvent evt) {
                     if (nameField.getText().equals("Input name...")) {
                         nameField.setText("");
-                        nameField.setForeground(new Color(0, 0, 0));
+                        nameField.setForeground(new Color(210, 188, 148));
                     }
                 }
 
@@ -149,19 +160,22 @@ class MainPanel extends JPanel {
                 public void focusLost(java.awt.event.FocusEvent evt) {
                     if (nameField.getText().isEmpty()) {
                         nameField.setText("Input name...");
-                        nameField.setForeground(new Color(0, 0, 0));
+                        nameField.setForeground(new Color(210, 188, 148));
                     }
                 }
             });
-            nameField.setForeground(new Color(0, 0, 0));
+            nameField.setForeground(new Color(193, 193, 193));
 
             JButton okButton = new JButton(okIcon);
-            okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight());
+            // Set exact size to match the image
+            okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight() - 90);
             okButton.setOpaque(false);
             okButton.setContentAreaFilled(false);
             okButton.setBorderPainted(false);
             okButton.setFocusPainted(false);
-            okButton.setBounds(300, 400, okIcon.getIconWidth(), okIcon.getIconHeight());
+
+            // Use setLocation instead of setBounds to ensure exact image size
+            okButton.setLocation(280, 450);
 
             gamePanel.add(okButton);
             nameField.setLocation(nameX, nameY);
@@ -169,30 +183,27 @@ class MainPanel extends JPanel {
 
             okButton.addActionListener(ev -> {
                 StopBugmain = true;
-                if (characterFrame != null)
-                {
+                if (characterFrame != null) {
                     characterFrame.dispose();
                     characterFrame = null;
                 }
-                if (gameFrame != null)
-                {
+                if (gameFrame != null) {
                     gameFrame.setVisible(false);
                 }
 
                 String name = nameField.getText();
-                if ("Input name...".equals(name))
-                {
+                if ("Input name...".equals(name)) {
                     name = "";
                 }
 
                 JFrame playFrame = new JFrame("Soyer VS Zombies");
-                playFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                playFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 playFrame.setResizable(false);
                 JLabel bgLabel = new JLabel(bgIcon);
                 bgLabel.setLayout(null);
 
                 bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
-                
+
                 JButton backBtn1 = createBackButton(playFrame, gameFrame);
                 bgLabel.add(backBtn1);
 
@@ -201,45 +212,48 @@ class MainPanel extends JPanel {
                 playFrame.setLocationRelativeTo(null);
                 playFrame.setVisible(true);
 
-                JButton hostButton = new JButton("Host");
-                JButton joinButton = new JButton("Join");
-                JButton StartSolo = new JButton("StartSolo");
+                JButton hostButton = new JButton(hostIcon);
+                JButton joinButton = new JButton(joinIcon);
+                JButton Solo = new JButton(soloIcon);
 
-                int btnWidth = startIcon.getIconWidth() - 25;
-                int btnHeight = startIcon.getIconHeight() - 75;
+                // Set button sizes to match their images
+                hostButton.setSize(hostIcon.getIconWidth(), hostIcon.getIconHeight()-90);
+                joinButton.setSize(joinIcon.getIconWidth(), joinIcon.getIconHeight()-90);
+                Solo.setSize(soloIcon.getIconWidth(), soloIcon.getIconHeight()-90);
 
-                hostButton.setSize(btnWidth, btnHeight);
-                joinButton.setSize(btnWidth, btnHeight);
-                StartSolo.setSize(btnWidth, btnHeight);
-
-                int centerX = bgIcon.getIconWidth() / 2 - btnWidth / 2;
+                // Calculate center positions for each button
+                int centerX = bgIcon.getIconWidth() / 2;
                 int centerY = bgIcon.getIconHeight() / 2;
 
-                hostButton.setLocation(centerX, centerY - 100);
-                joinButton.setLocation(centerX, centerY + 20);
-                StartSolo.setLocation(centerX, centerY + 140);
+                int hostX = centerX - hostIcon.getIconWidth() / 2;
+                int joinX = centerX - joinIcon.getIconWidth() / 2;
+                int soloX = centerX - soloIcon.getIconWidth() / 2;
 
+                hostButton.setLocation(hostX, centerY - 100);
+                joinButton.setLocation(joinX, centerY );
+                Solo.setLocation(soloX, centerY + 100);
 
-                hostButton.setOpaque(true);
-                hostButton.setContentAreaFilled(true);
+                // Make buttons transparent (image only)
+                hostButton.setOpaque(false);
+                hostButton.setContentAreaFilled(false);
                 hostButton.setBorderPainted(false);
                 hostButton.setFocusPainted(false);
 
-                joinButton.setOpaque(true);
-                joinButton.setContentAreaFilled(true);
+                joinButton.setOpaque(false);
+                joinButton.setContentAreaFilled(false);
                 joinButton.setBorderPainted(false);
                 joinButton.setFocusPainted(false);
 
-                StartSolo.setOpaque(true);
-                StartSolo.setContentAreaFilled(true);
-                StartSolo.setBorderPainted(false);
-                StartSolo.setFocusPainted(false);
+                Solo.setOpaque(false);
+                Solo.setContentAreaFilled(false);
+                Solo.setBorderPainted(false);
+                Solo.setFocusPainted(false);
 
                 bgLabel.add(hostButton);
                 bgLabel.add(joinButton);
-                bgLabel.add(StartSolo);
+                bgLabel.add(Solo);
 
-                StartSolo.addActionListener(ev3 -> {
+                Solo.addActionListener(ev3 -> {
                     String input = nameField.getText();
                     String playerName = "Player";
                     if (input != null && !input.isBlank() && !input.equals("Input name...")) {
@@ -249,8 +263,7 @@ class MainPanel extends JPanel {
                     playFrame.dispose();
 
                     SwingUtilities.invokeLater(() -> new GameFrame(finalName));
-                    if (playFrame != null)
-                    {
+                    if (playFrame != null) {
                         playFrame.dispose();
                     }
                 });
@@ -258,8 +271,7 @@ class MainPanel extends JPanel {
 
             gameCharacterBtn.addActionListener(evt -> {
                 StopBugmain = true;
-                if (mainFrame != null)
-                {
+                if (mainFrame != null) {
                     mainFrame.dispose();
                 }
                 if (characterFrame != null && characterFrame.isDisplayable()) {
@@ -268,7 +280,7 @@ class MainPanel extends JPanel {
                 }
 
                 characterFrame = new JFrame("Character Selection");
-                characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                characterFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 characterFrame.setSize(500, 430);
                 characterFrame.setLocationRelativeTo(null);
                 characterFrame.setResizable(false);
@@ -337,17 +349,20 @@ class MainPanel extends JPanel {
         backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         backButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseEntered(java.awt.event.MouseEvent e)
-            {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
                 backButton.setForeground(new Color(255, 200, 200));
             }
-            @Override public void mouseExited(java.awt.event.MouseEvent e)
-            { backButton.setForeground(Color.WHITE);
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                backButton.setForeground(Color.WHITE);
             }
         });
         backButton.addActionListener(e -> {
             currentFrame.dispose();
-            if (previousFrame != null) previousFrame.setVisible(true);
+            if (previousFrame != null)
+                previousFrame.setVisible(true);
         });
 
         return backButton;

@@ -104,8 +104,14 @@ class GamePanel extends JPanel implements ActionListener {
                     if (e.getKeyCode() == KeyEvent.VK_SPACE) restartGame();
                     return;
                 }
-                if (e.getKeyCode() == KeyEvent.VK_UP)   player.moveUp();
-                if (e.getKeyCode() == KeyEvent.VK_DOWN) player.moveDown();
+                if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_W)
+                    player.moveUp();
+                if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S)
+                    player.moveDown();
+                if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A)
+                    player.moveLeft();
+                if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D)
+                    player.moveRight();
             }
         });
     }
@@ -284,11 +290,20 @@ class Player {
     }
 
     void moveUp() {
-        if (y > 0) y -= speed;
+        if (y > 340)
+            y -= speed;
     }
-
+    void moveLeft() {
+        if (x > 250)
+            x -= speed;
+    }
+    void moveRight() {
+        if (x < GamePanel.HEIGHT - size)
+            x += speed;
+    }
     void moveDown() {
-        if (y < GamePanel.HEIGHT - size) y += speed;
+        if (y < 640)
+            y += speed;
     }
 
     Rectangle getBounds() {
@@ -298,9 +313,10 @@ class Player {
 
 /** คลาสซอมบี้ */
 class Zombie {
+    Random  rand = new Random();
     int x, y;
     int size = 40;
-    int speed = 3;
+    double speed = rand.nextDouble()*2.5+0.5;
 
     int health = 30; // เลือดเริ่มต้นของซอมบี้
 
