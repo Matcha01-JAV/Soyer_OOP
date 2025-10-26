@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.io.File;
 
@@ -55,6 +56,8 @@ class MainPanel extends JPanel {
     JButton character = new JButton(characterIcon);
     private boolean StopBugmain = false;
     private JFrame characterFrame = null; // Track character frame
+    private JFrame join = null;
+    private JFrame Host = null;
     private JFrame gameFrame = null; // Track game frame
 
     MainPanel() {
@@ -167,7 +170,7 @@ class MainPanel extends JPanel {
             nameField.setForeground(new Color(193, 193, 193));
 
             JButton okButton = new JButton(okIcon);
-            // Set exact size to match the image
+
             okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight() - 90);
             okButton.setOpaque(false);
             okButton.setContentAreaFilled(false);
@@ -233,7 +236,7 @@ class MainPanel extends JPanel {
                 joinButton.setLocation(joinX, centerY );
                 Solo.setLocation(soloX, centerY + 100);
 
-                // Make buttons transparent (image only)
+
                 hostButton.setOpaque(false);
                 hostButton.setContentAreaFilled(false);
                 hostButton.setBorderPainted(false);
@@ -252,7 +255,195 @@ class MainPanel extends JPanel {
                 bgLabel.add(hostButton);
                 bgLabel.add(joinButton);
                 bgLabel.add(Solo);
+                hostButton.addActionListener(ev1 -> {
+                    StopBugmain = true;
+                    if (playFrame != null) {
+                        playFrame.dispose();
+                    }
 
+                    JFrame Host = new JFrame("Soyer VS Zombies");
+                    Host.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                    Host.setResizable(false);
+
+                    JLabel bgLabelj = new JLabel(bgIcon);
+                    bgLabelj.setLayout(null);
+                    Host.setContentPane(bgLabelj);
+
+                    JTextField HTField = new JTextField("INPUT PORT");
+                    HTField.setFont(new Font("Arial", Font.BOLD, 20));
+                    HTField.setHorizontalAlignment(JTextField.CENTER);
+                    HTField.setSize(400, 60);
+                    HTField.setBackground(new Color(54, 54, 48, 255));
+                    HTField.setForeground(new Color(210, 188, 148));
+                    HTField.setOpaque(true);
+                    HTField.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+                    HTField.setCaretColor(new Color(100, 149, 237));
+                    HTField.setSelectionColor(new Color(173, 216, 230));
+                    HTField.setLocation((bgIcon.getIconWidth() - HTField.getWidth()) / 2 - 80,
+                            (bgIcon.getIconHeight() / 2) - 40);
+
+
+                    HTField.addFocusListener(new java.awt.event.FocusAdapter() {
+
+                    });
+
+                    JButton openPortBtn = new JButton(hostIcon);
+                    openPortBtn.setFocusPainted(false);
+                    openPortBtn.setSize(200, 60);
+                    openPortBtn.setLocation(HTField.getX() + HTField.getWidth() + 20, HTField.getY());
+                    openPortBtn.setOpaque(false);
+                    openPortBtn.setContentAreaFilled(false);
+                    openPortBtn.setBorderPainted(false);
+                    openPortBtn.setFocusPainted(false);
+
+
+                    JButton backBtnj = createBackButton(Host, playFrame);
+
+                    bgLabelj.add(backBtnj);
+                    bgLabelj.add(HTField);
+                    bgLabelj.add(openPortBtn);
+
+                    Host.pack();
+                    Host.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                    Host.setLocationRelativeTo(null);
+                    Host.setVisible(true);
+
+                    openPortBtn.addActionListener(ae -> {
+
+                        Host.dispose();
+                        JFrame lobby = new JFrame("Soyer VS Zombies");
+                        lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                        lobby.setResizable(false);
+
+                        JLabel bgLobby = new JLabel(bgIcon);
+                        bgLobby.setLayout(null);
+                        lobby.setContentPane(bgLobby);
+
+                        JPanel ipPanel = new JPanel(null);
+                        ipPanel.setBackground(new Color(54, 54, 48, 220));
+                        ipPanel.setBounds(70, 50, 430, 70);
+                        bgLobby.add(ipPanel);
+
+                        JLabel ipLabel = new JLabel("Host IP: ....");
+                        ipLabel.setFont(new Font("Arial", Font.BOLD, 34));
+                        ipLabel.setForeground(new Color(193, 193, 193));
+                        ipLabel.setBounds(18, 10, 390, 50);
+                        ipPanel.add(ipLabel);
+
+                        try {
+                            String ip = java.net.InetAddress.getLocalHost().getHostAddress();
+                            ipLabel.setText("Host IP: " + ip);
+                        } catch (Exception ignore) {
+
+                        }
+
+                        JPanel playersPanel = new JPanel(null);
+                        playersPanel.setBackground(new Color(54, 54, 48, 220));
+                        playersPanel.setBounds(70, 130, 600, 330);
+                        bgLobby.add(playersPanel);
+
+                        JLabel playersTitle = new JLabel("Player");
+                        playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
+                        playersTitle.setForeground(new Color(193, 193, 193));
+                        playersTitle.setBounds(18, 8, 400, 50);
+                        playersPanel.add(playersTitle);
+
+                        DefaultListModel<String> model = new DefaultListModel<>();
+                        JList<String> playerList = new JList<>(model);
+
+                        playerList.setFont(new Font("Arial", Font.PLAIN, 24));
+                        playerList.setForeground(new Color(220, 220, 220));
+                        playerList.setOpaque(false);
+
+
+                        JButton backBtn5 = createBackButton(lobby, playFrame);
+                        bgLobby.add(backBtn5);
+
+
+                        JButton startGameBtn = new JButton(startIcon);
+                        startGameBtn.setFont(new Font("Arial", Font.BOLD, 28));
+                        startGameBtn.setOpaque(false);
+                        startGameBtn.setContentAreaFilled(false);
+                        startGameBtn.setBorderPainted(false);
+                        startGameBtn.setFocusPainted(false);
+
+                        int btnW = 260, btnH = 70;
+                        startGameBtn.setSize(btnW, btnH);
+                        int btnY = playersPanel.getY() + playersPanel.getHeight() ;
+                        startGameBtn.setSize(200,60);
+                        startGameBtn.setLocation((bgIcon.getIconWidth() - btnW) / 2, btnY);
+
+
+                        bgLobby.add(startGameBtn);
+                        lobby.pack();
+                        lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                        lobby.setLocationRelativeTo(null);
+                        lobby.setVisible(true);
+
+
+
+                    });
+                });
+
+                joinButton.addActionListener(ev2 -> {
+                        StopBugmain = true;
+                        if (playFrame != null)
+                        {
+                            playFrame.dispose();
+                        }
+                        join = new JFrame("Soyer VS Zombies");
+                        join.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // แทน EXIT_ON_CLOSE
+                        join.setResizable(false);
+
+                        JLabel bgLabelj = new JLabel(bgIcon);
+                        bgLabelj.setLayout(null);
+                        join.setContentPane(bgLabelj);
+
+                        JTextField ipField = new JTextField("INPUT HOST IP");
+                        ipField.setFont(new Font("Arial", Font.BOLD, 20));
+                        ipField.setHorizontalAlignment(JTextField.CENTER);
+                        ipField.setSize(350, 60);
+                        ipField.setBackground(new Color(54, 54, 48, 255));
+                        ipField.setForeground(new Color(210, 188, 148));
+                        ipField.setOpaque(true);
+                        ipField.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+                        ipField.setCaretColor(new Color(100, 149, 237));
+                        ipField.setSelectionColor(new Color(173, 216, 230));
+                        ipField.setSize(400, 60);
+                        ipField.setLocation((bgIcon.getIconWidth() - ipField.getWidth()) / 2 - 80,
+                                (bgIcon.getIconHeight() / 2) - 40);
+
+                        ipField.addFocusListener(new java.awt.event.FocusAdapter() {
+
+
+                        });
+
+                        JButton joinConfirm = new JButton(joinIcon);
+                        joinConfirm.setFocusPainted(false);
+
+                        joinConfirm.setSize(200, 60);
+                        joinConfirm.setLocation(ipField.getX() + ipField.getWidth() + 20, ipField.getY());
+                        joinConfirm.setOpaque(false);
+                        joinConfirm.setContentAreaFilled(false);
+                        joinConfirm.setBorderPainted(false);
+                        joinConfirm.setFocusPainted(false);
+
+
+                        JButton backBtnj = createBackButton(join, playFrame);
+
+                        bgLabelj.add(backBtnj);
+                        bgLabelj.add(ipField);
+                        bgLabelj.add(joinConfirm);
+
+                        join.pack();
+                        join.setLocationRelativeTo(null);
+                        join.setVisible(true);
+
+                });
                 Solo.addActionListener(ev3 -> {
                     String input = nameField.getText();
                     String playerName = "Player";
@@ -368,3 +559,4 @@ class MainPanel extends JPanel {
         return backButton;
     }
 }
+
