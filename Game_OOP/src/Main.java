@@ -1,7 +1,7 @@
 import javax.swing.*;
-import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.io.File;
+import network.*;  // ใช้ GameClient/GameServer
 
 public class Main {
     public static void main(String[] args) {
@@ -9,92 +9,83 @@ public class Main {
         MainPanel panel = new MainPanel();
         frame.add(panel);
         frame.pack();
-        frame.setLocationRelativeTo(null); // Center the frame on screen
-
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 }
 
 class MainFrame extends JFrame {
     MainFrame() {
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
         setTitle("Soyer VS Zombies");
-
     }
 }
 
 class MainPanel extends JPanel {
-    ImageIcon bgIcon = new ImageIcon(
+    // โหลดรูป
+    private final ImageIcon bgIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "newbg.png");
-    Image bg = bgIcon.getImage();
-    ImageIcon bgIcon2 = new ImageIcon(
+    private final Image bg = bgIcon.getImage();
+
+    private final ImageIcon bgIcon2 = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "ch.png");
-    Image bg2 = bgIcon2.getImage();
 
-    ImageIcon startIcon = new ImageIcon(
+    private final ImageIcon startIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "startnew.png");
-    ImageIcon characterIcon = new ImageIcon(
+    private final ImageIcon characterIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "ch2.png");
-    ImageIcon okIcon = new ImageIcon(
+    private final ImageIcon okIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "ok2.png");
-    ImageIcon hostIcon = new ImageIcon(
+    private final ImageIcon hostIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "host.png");
-    ImageIcon joinIcon = new ImageIcon(
+    private final ImageIcon joinIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "join.png");
-    ImageIcon soloIcon = new ImageIcon(
+    private final ImageIcon soloIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "solo.png");
-    JButton start = new JButton(startIcon);
-    JButton character = new JButton(characterIcon);
+
+    // ปุ่มหน้าแรก
+    private final JButton start = new JButton(startIcon);
+    private final JButton character = new JButton(characterIcon);
+
+    // สถานะ/หน้าต่าง
     private boolean StopBugmain = false;
-    private JFrame characterFrame = null; // Track character frame
-    private JFrame join = null;
-    private JFrame Host = null;
-    private JFrame gameFrame = null; // Track game frame
+    private JFrame characterFrame = null;
+    private JFrame joinFrame = null;
+    private JFrame hostFrame = null;
+    private JFrame gameFrame = null;
 
     MainPanel() {
         setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
-        setLayout(null); // Use absolute positioning
+        setLayout(null);
 
-        // Set button sizes to match their images
+        // ขนาด/สไตล์ปุ่ม
         start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight());
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
-        // Make buttons transparent (image only)
-        start.setOpaque(false);
-        start.setContentAreaFilled(false);
-        start.setBorderPainted(false);
-        start.setFocusPainted(false);
-
-        character.setOpaque(false);
-        character.setContentAreaFilled(false);
-        character.setBorderPainted(false);
-        character.setFocusPainted(false);
+        Button(start);
+        Button(character);
 
         int screenCenterX = bgIcon.getIconWidth() / 2;
         int screenCenterY = bgIcon.getIconHeight() / 2;
 
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
+        int S = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
+
+
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
-
-        // วางตำแหน่ง
-
         character.setLocation(characterX, screenCenterY - 50);
-        add(start);
-        // (ถ้าต้องการให้ปุ่ม character แสดง ให้ปลดคอมเมนต์บรรทัดถัดไป)
-        // add(character);
-
         start.setLocation(startX - 15, getHeight() + 400);
+        add(start);
 
-        // Add action listeners
         start.addActionListener(e -> {
             if (gameFrame != null && gameFrame.isDisplayable()) {
                 gameFrame.toFront();
@@ -102,12 +93,12 @@ class MainPanel extends JPanel {
             }
 
             JFrame mainFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-            mainFrame.setVisible(false);
-
+            if (mainFrame != null) {
+                mainFrame.setVisible(false);
+            }
             gameFrame = new JFrame("Soyer VS Zombies - Game");
-            // gameFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            gameFrame.setResizable(false);
             gameFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            gameFrame.setResizable(false);
 
             JPanel gamePanel = new JPanel() {
                 @Override
@@ -116,24 +107,22 @@ class MainPanel extends JPanel {
                     g.drawImage(bg, 0, 0, this);
                 }
             };
+
             gamePanel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
             gamePanel.setLayout(null);
 
-            JButton backBtn = createBackButton(gameFrame, mainFrame);
-            gamePanel.add(backBtn);
+            JButton backBtni = createBackButton(gameFrame, mainFrame);
+            gamePanel.add(backBtni);
 
             JButton gameCharacterBtn = new JButton(characterIcon);
             gameCharacterBtn.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight() - 70);
-            gameCharacterBtn.setOpaque(false);
-            gameCharacterBtn.setContentAreaFilled(false);
-            gameCharacterBtn.setBorderPainted(false);
-            gameCharacterBtn.setFocusPainted(false);
-
+            Button(gameCharacterBtn);
             int gameCharacterX = (bgIcon.getIconWidth() / 2 - characterIcon.getIconWidth() / 2) + 200;
             int gameCharacterY = bgIcon.getIconHeight() / 2 + 70;
             gameCharacterBtn.setLocation(gameCharacterX, gameCharacterY + 10);
 
             int textWidth = 220, textHeight = 40;
+            // ชื่อผู้เล่น
             JTextField nameField = new JTextField("Input name...");
             nameField.setFont(new Font("Arial", Font.BOLD, 20));
             nameField.setHorizontalAlignment(JTextField.CENTER);
@@ -146,10 +135,7 @@ class MainPanel extends JPanel {
                     BorderFactory.createEmptyBorder(10, 15, 10, 15)));
             nameField.setCaretColor(new Color(100, 149, 237));
             nameField.setSelectionColor(new Color(173, 216, 230));
-
-            int nameX = characterX - textWidth - 140;
-            int nameY = screenCenterY - textHeight / 2 + 108;
-
+            nameField.setForeground(new Color(193, 193, 193));
             nameField.addFocusListener(new java.awt.event.FocusAdapter() {
                 @Override
                 public void focusGained(java.awt.event.FocusEvent evt) {
@@ -167,301 +153,37 @@ class MainPanel extends JPanel {
                     }
                 }
             });
-            nameField.setForeground(new Color(193, 193, 193));
+            int nameX = characterX - textWidth - 140;
+            int nameY = screenCenterY - textHeight / 2 + 108;
 
+            gamePanel.add(nameField);
             JButton okButton = new JButton(okIcon);
-
+            Button(okButton);
             okButton.setSize(okIcon.getIconWidth(), okIcon.getIconHeight() - 90);
-            okButton.setOpaque(false);
-            okButton.setContentAreaFilled(false);
-            okButton.setBorderPainted(false);
-            okButton.setFocusPainted(false);
-
-            // Use setLocation instead of setBounds to ensure exact image size
             okButton.setLocation(280, 450);
 
-            gamePanel.add(okButton);
-            nameField.setLocation(nameX, nameY);
+            gamePanel.add(gameCharacterBtn);
             gamePanel.add(nameField);
+            nameField.setLocation(nameX, nameY);
+            gamePanel.add(okButton);
 
-            okButton.addActionListener(ev -> {
+            gameFrame.add(gamePanel);
+            gameFrame.pack();
+            gameFrame.setLocationRelativeTo(null);
+//           gameFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+//                @Override
+//                public void windowClosed(java.awt.event.WindowEvent windowEvent) {
+//                    gameFrame = null;
+//                    if (!StopBugmain && mainFrame != null)
+//                    {
+//                        mainFrame.setVisible(true);
+//                    }
+//                }
+//            });
+            gameFrame.setVisible(true);
+            gameCharacterBtn.addActionListener(et -> {
                 StopBugmain = true;
-                if (characterFrame != null) {
-                    characterFrame.dispose();
-                    characterFrame = null;
-                }
-                if (gameFrame != null) {
-                    gameFrame.setVisible(false);
-                }
 
-                String name = nameField.getText();
-                if ("Input name...".equals(name)) {
-                    name = "";
-                }
-
-                JFrame playFrame = new JFrame("Soyer VS Zombies");
-                playFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                playFrame.setResizable(false);
-                JLabel bgLabel = new JLabel(bgIcon);
-                bgLabel.setLayout(null);
-
-                bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
-
-                JButton backBtn1 = createBackButton(playFrame, gameFrame);
-                bgLabel.add(backBtn1);
-
-                playFrame.setContentPane(bgLabel);
-                playFrame.pack();
-                playFrame.setLocationRelativeTo(null);
-                playFrame.setVisible(true);
-
-                JButton hostButton = new JButton(hostIcon);
-                JButton joinButton = new JButton(joinIcon);
-                JButton Solo = new JButton(soloIcon);
-
-                // Set button sizes to match their images
-                hostButton.setSize(hostIcon.getIconWidth(), hostIcon.getIconHeight()-90);
-                joinButton.setSize(joinIcon.getIconWidth(), joinIcon.getIconHeight()-90);
-                Solo.setSize(soloIcon.getIconWidth(), soloIcon.getIconHeight()-90);
-
-                // Calculate center positions for each button
-                int centerX = bgIcon.getIconWidth() / 2;
-                int centerY = bgIcon.getIconHeight() / 2;
-
-                int hostX = centerX - hostIcon.getIconWidth() / 2;
-                int joinX = centerX - joinIcon.getIconWidth() / 2;
-                int soloX = centerX - soloIcon.getIconWidth() / 2;
-
-                hostButton.setLocation(hostX, centerY - 100);
-                joinButton.setLocation(joinX, centerY );
-                Solo.setLocation(soloX, centerY + 100);
-
-
-                hostButton.setOpaque(false);
-                hostButton.setContentAreaFilled(false);
-                hostButton.setBorderPainted(false);
-                hostButton.setFocusPainted(false);
-
-                joinButton.setOpaque(false);
-                joinButton.setContentAreaFilled(false);
-                joinButton.setBorderPainted(false);
-                joinButton.setFocusPainted(false);
-
-                Solo.setOpaque(false);
-                Solo.setContentAreaFilled(false);
-                Solo.setBorderPainted(false);
-                Solo.setFocusPainted(false);
-
-                bgLabel.add(hostButton);
-                bgLabel.add(joinButton);
-                bgLabel.add(Solo);
-                hostButton.addActionListener(ev1 -> {
-                    StopBugmain = true;
-                    if (playFrame != null) {
-                        playFrame.dispose();
-                    }
-
-                    JFrame Host = new JFrame("Soyer VS Zombies");
-                    Host.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                    Host.setResizable(false);
-
-                    JLabel bgLabelj = new JLabel(bgIcon);
-                    bgLabelj.setLayout(null);
-                    Host.setContentPane(bgLabelj);
-
-                    JTextField HTField = new JTextField("INPUT PORT");
-                    HTField.setFont(new Font("Arial", Font.BOLD, 20));
-                    HTField.setHorizontalAlignment(JTextField.CENTER);
-                    HTField.setSize(400, 60);
-                    HTField.setBackground(new Color(54, 54, 48, 255));
-                    HTField.setForeground(new Color(210, 188, 148));
-                    HTField.setOpaque(true);
-                    HTField.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
-                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
-                    HTField.setCaretColor(new Color(100, 149, 237));
-                    HTField.setSelectionColor(new Color(173, 216, 230));
-                    HTField.setLocation((bgIcon.getIconWidth() - HTField.getWidth()) / 2 - 80,
-                            (bgIcon.getIconHeight() / 2) - 40);
-
-
-                    HTField.addFocusListener(new java.awt.event.FocusAdapter() {
-
-                    });
-
-                    JButton openPortBtn = new JButton(hostIcon);
-                    openPortBtn.setFocusPainted(false);
-                    openPortBtn.setSize(200, 60);
-                    openPortBtn.setLocation(HTField.getX() + HTField.getWidth() + 20, HTField.getY());
-                    openPortBtn.setOpaque(false);
-                    openPortBtn.setContentAreaFilled(false);
-                    openPortBtn.setBorderPainted(false);
-                    openPortBtn.setFocusPainted(false);
-
-
-                    JButton backBtnj = createBackButton(Host, playFrame);
-
-                    bgLabelj.add(backBtnj);
-                    bgLabelj.add(HTField);
-                    bgLabelj.add(openPortBtn);
-
-                    Host.pack();
-                    Host.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
-                    Host.setLocationRelativeTo(null);
-                    Host.setVisible(true);
-
-                    openPortBtn.addActionListener(ae -> {
-
-                        Host.dispose();
-                        JFrame lobby = new JFrame("Soyer VS Zombies");
-                        lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                        lobby.setResizable(false);
-
-                        JLabel bgLobby = new JLabel(bgIcon);
-                        bgLobby.setLayout(null);
-                        lobby.setContentPane(bgLobby);
-
-                        JPanel ipPanel = new JPanel(null);
-                        ipPanel.setBackground(new Color(54, 54, 48, 220));
-                        ipPanel.setBounds(70, 50, 430, 70);
-                        bgLobby.add(ipPanel);
-
-                        JLabel ipLabel = new JLabel("Host IP: ....");
-                        ipLabel.setFont(new Font("Arial", Font.BOLD, 34));
-                        ipLabel.setForeground(new Color(193, 193, 193));
-                        ipLabel.setBounds(18, 10, 390, 50);
-                        ipPanel.add(ipLabel);
-
-                        try {
-                            String ip = java.net.InetAddress.getLocalHost().getHostAddress();
-                            ipLabel.setText("Host IP: " + ip);
-                        } catch (Exception ignore) {
-
-                        }
-
-                        JPanel playersPanel = new JPanel(null);
-                        playersPanel.setBackground(new Color(54, 54, 48, 220));
-                        playersPanel.setBounds(70, 130, 600, 330);
-                        bgLobby.add(playersPanel);
-
-                        JLabel playersTitle = new JLabel("Player");
-                        playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
-                        playersTitle.setForeground(new Color(193, 193, 193));
-                        playersTitle.setBounds(18, 8, 400, 50);
-                        playersPanel.add(playersTitle);
-
-                        DefaultListModel<String> model = new DefaultListModel<>();
-                        JList<String> playerList = new JList<>(model);
-
-                        playerList.setFont(new Font("Arial", Font.PLAIN, 24));
-                        playerList.setForeground(new Color(220, 220, 220));
-                        playerList.setOpaque(false);
-
-
-                        JButton backBtn5 = createBackButton(lobby, playFrame);
-                        bgLobby.add(backBtn5);
-
-
-                        JButton startGameBtn = new JButton(startIcon);
-                        startGameBtn.setFont(new Font("Arial", Font.BOLD, 28));
-                        startGameBtn.setOpaque(false);
-                        startGameBtn.setContentAreaFilled(false);
-                        startGameBtn.setBorderPainted(false);
-                        startGameBtn.setFocusPainted(false);
-
-                        int btnW = 260, btnH = 70;
-                        startGameBtn.setSize(btnW, btnH);
-                        int btnY = playersPanel.getY() + playersPanel.getHeight() ;
-                        startGameBtn.setSize(200,60);
-                        startGameBtn.setLocation((bgIcon.getIconWidth() - btnW) / 2, btnY);
-
-
-                        bgLobby.add(startGameBtn);
-                        lobby.pack();
-                        lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
-                        lobby.setLocationRelativeTo(null);
-                        lobby.setVisible(true);
-
-
-
-                    });
-                });
-
-                joinButton.addActionListener(ev2 -> {
-                        StopBugmain = true;
-                        if (playFrame != null)
-                        {
-                            playFrame.dispose();
-                        }
-                        join = new JFrame("Soyer VS Zombies");
-                        join.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // แทน EXIT_ON_CLOSE
-                        join.setResizable(false);
-
-                        JLabel bgLabelj = new JLabel(bgIcon);
-                        bgLabelj.setLayout(null);
-                        join.setContentPane(bgLabelj);
-
-                        JTextField ipField = new JTextField("INPUT HOST IP");
-                        ipField.setFont(new Font("Arial", Font.BOLD, 20));
-                        ipField.setHorizontalAlignment(JTextField.CENTER);
-                        ipField.setSize(350, 60);
-                        ipField.setBackground(new Color(54, 54, 48, 255));
-                        ipField.setForeground(new Color(210, 188, 148));
-                        ipField.setOpaque(true);
-                        ipField.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
-                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
-                        ipField.setCaretColor(new Color(100, 149, 237));
-                        ipField.setSelectionColor(new Color(173, 216, 230));
-                        ipField.setSize(400, 60);
-                        ipField.setLocation((bgIcon.getIconWidth() - ipField.getWidth()) / 2 - 80,
-                                (bgIcon.getIconHeight() / 2) - 40);
-
-                        ipField.addFocusListener(new java.awt.event.FocusAdapter() {
-
-
-                        });
-
-                        JButton joinConfirm = new JButton(joinIcon);
-                        joinConfirm.setFocusPainted(false);
-
-                        joinConfirm.setSize(200, 60);
-                        joinConfirm.setLocation(ipField.getX() + ipField.getWidth() + 20, ipField.getY());
-                        joinConfirm.setOpaque(false);
-                        joinConfirm.setContentAreaFilled(false);
-                        joinConfirm.setBorderPainted(false);
-                        joinConfirm.setFocusPainted(false);
-
-
-                        JButton backBtnj = createBackButton(join, playFrame);
-
-                        bgLabelj.add(backBtnj);
-                        bgLabelj.add(ipField);
-                        bgLabelj.add(joinConfirm);
-
-                        join.pack();
-                        join.setLocationRelativeTo(null);
-                        join.setVisible(true);
-
-                });
-                Solo.addActionListener(ev3 -> {
-                    String input = nameField.getText();
-                    String playerName = "Player";
-                    if (input != null && !input.isBlank() && !input.equals("Input name...")) {
-                        playerName = input.trim();
-                    }
-                    final String finalName = playerName;
-                    playFrame.dispose();
-
-                    SwingUtilities.invokeLater(() -> new GameFrame(finalName));
-                    if (playFrame != null) {
-                        playFrame.dispose();
-                    }
-                });
-            });
-
-            gameCharacterBtn.addActionListener(evt -> {
-                StopBugmain = true;
                 if (mainFrame != null) {
                     mainFrame.dispose();
                 }
@@ -471,23 +193,15 @@ class MainPanel extends JPanel {
                 }
 
                 characterFrame = new JFrame("Character Selection");
-                characterFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                characterFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
                 characterFrame.setSize(500, 430);
                 characterFrame.setLocationRelativeTo(null);
                 characterFrame.setResizable(false);
 
-                JLabel label = new JLabel("Character Selection", JLabel.CENTER);
-                label.setFont(new Font("Arial", Font.BOLD, 20));
-                characterFrame.add(label);
-
+                // พื้นหลัง + Layout
                 JLabel bgLabel = new JLabel(bgIcon2);
                 bgLabel.setLayout(new BorderLayout());
                 characterFrame.setContentPane(bgLabel);
-
-                JLabel labelch = new JLabel("Character Selection", JLabel.CENTER);
-                labelch.setFont(new Font("Arial", Font.BOLD, 24));
-                labelch.setForeground(Color.WHITE);
-                labelch.add(label, BorderLayout.CENTER);
 
                 characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
@@ -502,26 +216,496 @@ class MainPanel extends JPanel {
 
                 characterFrame.setVisible(true);
             });
-
-            gamePanel.add(gameCharacterBtn);
-            gameFrame.add(gamePanel);
-            gameFrame.pack();
-            gameFrame.setLocationRelativeTo(null);
-
-            gameFrame.addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override
-                public void windowClosed(java.awt.event.WindowEvent windowEvent) {
-                    gameFrame = null;
-                    if (!StopBugmain && mainFrame != null) {
-                        mainFrame.setVisible(true);
-                    }
+            okButton.addActionListener(ev -> {
+                StopBugmain = true;
+                if (characterFrame != null) {
+                    characterFrame.dispose();
+                    characterFrame = null;
                 }
+                if (gameFrame != null) {
+                    gameFrame.dispose(); // ใช้ dispose ให้ windowClosed ทำงาน
+                }
+
+                String name = nameField.getText();
+                if ("Input name...".equals(name)) {
+                    name = "";
+                }
+                int randomNum = (int) (Math.random() * 9000) + 1000;
+                final String playerName;
+                if (name == null || name.isBlank()) {
+                    playerName = "Player" + randomNum;
+                } else {
+                    playerName = name.trim() + randomNum;
+                }
+                JFrame playFrame = new JFrame("Soyer VS Zombies");
+                playFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                playFrame.setResizable(false);
+
+                JLabel bgLabel = new JLabel(bgIcon);
+                bgLabel.setLayout(null);
+                bgLabel.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
+
+                JButton backBtn1 = createBackButton(playFrame, gameFrame);
+                bgLabel.add(backBtn1);
+
+                JButton hostButton = new JButton(hostIcon);
+                JButton joinButton = new JButton(joinIcon);
+                JButton soloButton = new JButton(soloIcon);
+
+                hostButton.setSize(hostIcon.getIconWidth(), hostIcon.getIconHeight() - 90);
+                joinButton.setSize(joinIcon.getIconWidth(), joinIcon.getIconHeight() - 90);
+                soloButton.setSize(soloIcon.getIconWidth(), soloIcon.getIconHeight() - 90);
+
+                int centerX = bgIcon.getIconWidth() / 2;
+                int centerY = bgIcon.getIconHeight() / 2;
+
+                hostButton.setLocation(centerX - hostButton.getWidth() / 2, centerY - 100);
+                joinButton.setLocation(centerX - joinButton.getWidth() / 2, centerY);
+                soloButton.setLocation(centerX - soloButton.getWidth() / 2, centerY + 100);
+
+                Button(hostButton);
+                Button(joinButton);
+                Button(soloButton);
+
+                bgLabel.add(hostButton);
+                bgLabel.add(joinButton);
+                bgLabel.add(soloButton);
+
+                playFrame.setContentPane(bgLabel);
+                playFrame.pack();
+                playFrame.setLocationRelativeTo(null);
+                playFrame.setVisible(true);
+
+                hostButton.addActionListener(ev1 -> {
+                    StopBugmain = true;
+                    playFrame.dispose();
+
+                    hostFrame = new JFrame("Soyer VS Zombies");
+                    hostFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                    hostFrame.setResizable(false);
+
+                    JLabel bgLabelHost = new JLabel(bgIcon);
+                    bgLabelHost.setLayout(null);
+                    hostFrame.setContentPane(bgLabelHost);
+
+                    JTextField portField = new JTextField("INPUT PORT");
+                    portField.setFont(new Font("Arial", Font.BOLD, 20));
+                    portField.setHorizontalAlignment(JTextField.CENTER);
+                    portField.setSize(350, 60);
+                    portField.setBackground(new Color(54, 54, 48, 255));
+                    portField.setForeground(new Color(210, 188, 148));
+                    portField.setOpaque(true);
+                    portField.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+                    portField.setCaretColor(new Color(100, 149, 237));
+                    portField.setSelectionColor(new Color(173, 216, 230));
+                    portField.setForeground(new Color(193, 193, 193));
+                    portField.addFocusListener(new java.awt.event.FocusAdapter() {
+                        @Override
+                        public void focusGained(java.awt.event.FocusEvent evt) {
+                            if (portField.getText().equals("INPUT PORT"))
+                            {
+                                portField.setText("");
+                                portField.setForeground(new Color(210, 188, 148));
+                            }
+                        }
+
+                        @Override
+                        public void focusLost(java.awt.event.FocusEvent evt) {
+                            if (portField.getText().isEmpty())
+                            {
+                                portField.setText("INPUT PORT");
+                                portField.setForeground(new Color(210, 188, 148));
+                            }
+                        }
+                    });
+                    portField.setSize(400, 60);
+                    portField.setLocation((bgIcon.getIconWidth() - portField.getWidth()) / 2 - 80, (bgIcon.getIconHeight() / 2) - 40);
+                    bgLabelHost.add(portField);
+
+                    JButton openPortBtn = new JButton(hostIcon);
+                    Button(openPortBtn);
+                    openPortBtn.setSize(200, 60);
+                    openPortBtn.setLocation(portField.getX() + portField.getWidth() + 20, portField.getY());
+                    bgLabelHost.add(openPortBtn);
+
+                    JButton backBtnHost = createBackButton(hostFrame, playFrame);
+                    bgLabelHost.add(backBtnHost);
+
+                    hostFrame.pack();
+                    hostFrame.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                    hostFrame.setLocationRelativeTo(null);
+                    hostFrame.setVisible(true);
+
+                    openPortBtn.addActionListener(ae -> {
+                        String portStr = portField.getText();
+                        if (portStr == null || portStr.isEmpty() || portStr.equals("INPUT PORT")) {
+                            JOptionPane.showMessageDialog(hostFrame, "Please enter a valid port number",
+                                    "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        int port;
+                        try {
+                            port = Integer.parseInt(portStr);
+                            if (port < 1024 || port > 65535) {
+                                JOptionPane.showMessageDialog(hostFrame, "Port must be between 1024 and 65535", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                                return;
+                            }
+                        } catch (NumberFormatException ex) {
+                            JOptionPane.showMessageDialog(hostFrame, "Please enter a valid port number", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        hostFrame.dispose();
+
+                        GameServer server = new GameServer(port);
+                        new Thread(() -> {
+                            try {
+                                server.start();
+                            } catch (Exception ey) {
+                                System.err.println("Server error: " + ey.getMessage());
+                                SwingUtilities.invokeLater(() ->
+                                        JOptionPane.showMessageDialog(null, "Failed to start server: " + ey.getMessage(),
+                                                "Server Error", JOptionPane.ERROR_MESSAGE)
+                                );
+                            }
+                        }).start();
+
+                        // Lobby ฝั่ง Host
+                        JFrame lobby = new JFrame("Soyer VS Zombies - Lobby");
+                        lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                        lobby.setResizable(false);
+                        JLabel bgLobby = new JLabel(bgIcon);
+                        bgLobby.setLayout(null);
+                        lobby.setContentPane(bgLobby);
+
+                        JPanel ipPanel = new JPanel(null);
+                        ipPanel.setBackground(new Color(54, 54, 48, 220));
+                        ipPanel.setBounds(70, 50, 430, 70);
+                        bgLobby.add(ipPanel);
+
+                        JLabel ipLabel = new JLabel("Host IP: ....");
+                        ipLabel.setFont(new Font("Arial", Font.BOLD, 20));
+                        ipLabel.setForeground(new Color(193, 193, 193));
+                        ipLabel.setBounds(18, 10, 390, 50);
+                        ipPanel.add(ipLabel);
+
+                        try {
+                            String ip = java.net.InetAddress.getLocalHost().getHostAddress();
+                            ipLabel.setText("Host IP: " + ip + ":" + port);
+                        } catch (Exception ignore) {
+                        }
+
+                        JPanel playersPanel = new JPanel(null);
+                        playersPanel.setBackground(new Color(54, 54, 48, 220));
+                        playersPanel.setBounds(70, 130, 600, 330);
+                        bgLobby.add(playersPanel);
+
+                        JLabel playersTitle = new JLabel("Players");
+                        playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
+                        playersTitle.setForeground(new Color(193, 193, 193));
+                        playersTitle.setBounds(18, 8, 400, 50);
+                        playersPanel.add(playersTitle);
+
+                        DefaultListModel<String> model = new DefaultListModel<>();
+                        JList<String> playerList = new JList<>(model);
+
+                        playerList.setFont(new Font("Arial", Font.PLAIN, 24));
+                        playerList.setForeground(new Color(220, 220, 220));
+                        playerList.setOpaque(false);
+
+                        JScrollPane scroll = new JScrollPane(playerList);
+                        scroll.setOpaque(false);
+                        scroll.getViewport().setOpaque(false);
+                        scroll.setBorder(BorderFactory.createEmptyBorder());
+                        scroll.setBounds(18, 60, 560, 250);
+                        playersPanel.add(scroll);
+
+                        model.addElement(playerName + " (Host)");
+
+
+                        lobby.getRootPane().putClientProperty("server", server);
+
+                        JButton backBtn5 = createBackButton(lobby, playFrame);
+                        backBtn5.addActionListener(eh -> {
+                            server.stop();
+                            lobby.dispose();
+                        });
+                        bgLobby.add(backBtn5);
+
+                        JButton startGameBtn = new JButton(startIcon);
+                        Button(startGameBtn);
+                        int btnW = 200, btnH = 60;
+                        startGameBtn.setSize(btnW, btnH);
+                        int btnY = playersPanel.getY() + playersPanel.getHeight();
+                        startGameBtn.setLocation((bgIcon.getIconWidth() - btnW) / 2, btnY);
+
+                        startGameBtn.addActionListener(ed -> {
+                            GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
+                            if (serverVar != null) serverVar.startGame();
+                            lobby.dispose();
+                            SwingUtilities.invokeLater(() -> new GameFrame(playerName));
+                        });
+
+                        bgLobby.add(startGameBtn);
+                        lobby.pack();
+                        lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                        lobby.setLocationRelativeTo(null);
+                        lobby.setVisible(true);
+                        javax.swing.Timer poll = new javax.swing.Timer(500, er -> {
+                            try {
+                                java.util.List<String> names = server.getPlayerNames();
+                                model.clear();
+                                model.addElement(playerName + " (Host)");
+                                for (String n : names) {
+                                    if (!n.equals(playerName) && n != null && !n.isBlank()) {
+                                        model.addElement(n);
+                                    }
+                                }
+                            } catch (Exception ignore) {
+                            }
+                        });
+                        poll.start();
+
+
+                        lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+                            @Override
+                            public void windowClosed(java.awt.event.WindowEvent e) {
+                                poll.stop();
+                            }
+                        });
+                    });
+                });
+
+                // === Join ===
+                joinButton.addActionListener(ev2 -> {
+                    StopBugmain = true;
+                    playFrame.dispose();
+
+                    joinFrame = new JFrame("Soyer VS Zombies");
+                    joinFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                    joinFrame.setResizable(false);
+
+                    JLabel bgLabelJoin = new JLabel(bgIcon);
+                    bgLabelJoin.setLayout(null);
+                    joinFrame.setContentPane(bgLabelJoin);
+
+                    JTextField ipField = new JTextField("INPUT HOST IP");
+                    ipField.setFont(new Font("Arial", Font.BOLD, 20));
+                    ipField.setHorizontalAlignment(JTextField.CENTER);
+                    ipField.setSize(350, 60);
+                    ipField.setBackground(new Color(54, 54, 48, 255));
+                    ipField.setForeground(new Color(210, 188, 148));
+                    ipField.setOpaque(true);
+                    ipField.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+                            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+                    ipField.setCaretColor(new Color(100, 149, 237));
+                    ipField.setSelectionColor(new Color(173, 216, 230));
+                    ipField.setForeground(new Color(193, 193, 193));
+                    ipField.addFocusListener(new java.awt.event.FocusAdapter() {
+                        @Override
+                        public void focusGained(java.awt.event.FocusEvent evt) {
+                            if (ipField.getText().equals("INPUT HOST IP")) {
+                                ipField.setText("");
+                                ipField.setForeground(new Color(210, 188, 148));
+                            }
+                        }
+
+                        @Override
+                        public void focusLost(java.awt.event.FocusEvent evt) {
+                            if (ipField.getText().isEmpty()) {
+                                ipField.setText("INPUT HOST IP");
+                                ipField.setForeground(new Color(210, 188, 148));
+                            }
+                        }
+                    });
+
+                    ipField.setSize(400, 60);
+                    ipField.setLocation((bgIcon.getIconWidth() - ipField.getWidth()) / 2 - 80,
+                            (bgIcon.getIconHeight() / 2) - 40);
+                    bgLabelJoin.add(ipField);
+
+                    JButton joinConfirm = new JButton(joinIcon);
+                    Button(joinConfirm);
+                    joinConfirm.setSize(200, 60);
+                    joinConfirm.setLocation(ipField.getX() + ipField.getWidth() + 20, ipField.getY());
+                    bgLabelJoin.add(joinConfirm);
+
+                    JButton backBtnj = createBackButton(joinFrame, playFrame);
+                    bgLabelJoin.add(backBtnj);
+
+                    // ยืนยัน Join
+                    joinConfirm.addActionListener(ej -> {
+                        String ipPort = ipField.getText();
+                        if (ipPort == null || ipPort.isEmpty() || ipPort.equals("INPUT HOST IP")) {
+                            JOptionPane.showMessageDialog(joinFrame, "Please enter a valid IP address and port",
+                                    "Invalid Address", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
+                        String[] parts = ipPort.split(":");
+                        String host = parts[0];
+                        int port = 8080; // default
+                        if (parts.length > 1) {
+                            try {
+                                port = Integer.parseInt(parts[1]);
+                            } catch (NumberFormatException ex) {
+                                JOptionPane.showMessageDialog(joinFrame, "Invalid port number",
+                                        "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                                return;
+                            }
+                        }
+
+                        final String pn = playerName;
+                        final GameClient[] clientHolder = new GameClient[1];
+                        final DefaultListModel<String>[] modelRef = new DefaultListModel[]{null};
+                        final String selfName = pn;
+
+                        clientHolder[0] = new GameClient(pn, message -> {
+                            SwingUtilities.invokeLater(() -> {
+                                if (message.startsWith("PLAYER_LIST:")) {
+
+
+                                } else if (message.startsWith("GAME_START")) {
+                                    joinFrame.dispose();
+                                    SwingUtilities.invokeLater(() -> new GameFrame(selfName, clientHolder[0]));
+                                }
+                            });
+                        });
+                        if (clientHolder[0].connect(host, port)) {
+                            joinFrame.dispose();
+
+                            // สร้าง Lobby ของฝั่ง Join
+                            final GameClient client = clientHolder[0];
+
+                            // <<==== วางตรงนี้ ====>>
+                            DefaultListModel<String> model = new DefaultListModel<>();
+                            modelRef[0] = model;
+
+                            JFrame lobby = new JFrame("Soyer VS Zombies - Lobby");
+                            lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                            lobby.setResizable(false);
+
+                            JLabel bgLobby = new JLabel(bgIcon);
+                            bgLobby.setLayout(null);
+                            lobby.setContentPane(bgLobby);
+                            JPanel playersPanel = new JPanel(null);
+                            playersPanel.setBackground(new Color(54, 54, 48, 220));
+                            playersPanel.setBounds(70, 130, 600, 330);
+                            bgLobby.add(playersPanel);
+                            JLabel playersTitle = new JLabel("Waiting for Host...");
+                            playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
+                            playersTitle.setForeground(new Color(193, 193, 193));
+                            playersTitle.setBounds(130,130,400,50);
+                            playersPanel.add(playersTitle);
+
+                                JButton backBtn = createBackButton(lobby, playFrame);
+                                backBtn.addActionListener(e2 -> {
+                                    client.disconnect();
+                                    lobby.dispose();
+                                });
+                                bgLobby.add(backBtn);
+
+                                lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+                                    @Override public void windowClosed(java.awt.event.WindowEvent e3) {
+                                        client.disconnect();
+                                    }
+                                });
+                                lobby.pack();
+                                lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                                lobby.setLocationRelativeTo(null);
+                                lobby.setVisible(true);
+
+                        } else {
+                            JOptionPane.showMessageDialog(joinFrame, "Failed to connect to server",
+                                    "Connection Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    });
+
+                    joinFrame.pack();
+                    joinFrame.setLocationRelativeTo(null);
+                    joinFrame.setVisible(true);
+                });
+
+                soloButton.addActionListener(ev3 -> {
+                    String input = nameField.getText();
+                    String pn = "Player";
+                    if (input != null && !input.isBlank() && !input.equals("Input name...")) {
+                        pn = input.trim();
+                    }
+                    playFrame.dispose();
+                    SwingUtilities.invokeLater(() -> new GameFrame(playerName));
+                });
             });
-
-            gameFrame.setVisible(true);
         });
-
     }
+//    private JTextField lazyTEXT(String placeholder)
+//    { JTextField tf = new JTextField(placeholder);
+//        tf.setFont(new Font("Arial", Font.BOLD, 20));
+//        tf.setHorizontalAlignment(JTextField.CENTER);
+//        tf.setBackground(new Color(54, 54, 48, 255));
+//        tf.setForeground(new Color(210, 188, 148)); tf.setOpaque(true);
+//        tf.setBorder(BorderFactory.createCompoundBorder( BorderFactory.createLineBorder(new Color(35, 34, 29), 4, true),
+//                BorderFactory.createEmptyBorder(10, 15, 10, 15))); tf.setCaretColor(new Color(100, 149, 237));
+//                tf.setSelectionColor(new Color(173, 216, 230));
+//                tf.addFocusListener(new java.awt.event.FocusAdapter() {
+//                    @Override
+//                    public void focusGained(java.awt.event.FocusEvent evt)
+//                    {
+//                        if (tf.getText().equals(placeholder))
+//                        {
+//                            tf.setText(""); tf.setForeground(new Color(210, 188, 148));
+//                        }
+//                    }
+//                    @Override
+//                    public void focusLost(java.awt.event.FocusEvent evt)
+//                    { if
+//                    (
+//                            tf.getText().isEmpty())
+//                    {
+//                        tf.setText(placeholder);
+//                        tf.setForeground(new Color(210, 188, 148)); } } });
+//                        tf.setForeground(new Color(193, 193, 193));
+//                return tf;
+//    }
+
+    private void Button(AbstractButton b) {
+        b.setOpaque(false);
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+
+//    private void openCharacterFrame(JFrame mainFrame) {
+//        StopBugmain = true;
+//        if (mainFrame != null) mainFrame.dispose();
+//        if (characterFrame != null && characterFrame.isDisplayable()) {
+//            characterFrame.toFront();
+//            return;
+//        }
+//
+//        characterFrame = new JFrame("Character Selection");
+//        characterFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+//        characterFrame.setSize(500, 430);
+//        characterFrame.setLocationRelativeTo(null);
+//        characterFrame.setResizable(false);
+//
+//        JLabel bgLabel = new JLabel(bgIcon2);
+//        bgLabel.setLayout(new BorderLayout());
+//        characterFrame.setContentPane(bgLabel);
+//
+//        characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+//            @Override
+//            public void windowClosed(java.awt.event.WindowEvent windowEvent) {
+//                characterFrame = null;
+//            }
+//        });
+//
+//        characterFrame.setVisible(true);
+//    }
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -533,7 +717,7 @@ class MainPanel extends JPanel {
         JButton backButton = new JButton("← Back");
         backButton.setFont(new Font("Arial", Font.BOLD, 18));
         backButton.setForeground(Color.WHITE);
-        backButton.setBounds(15, 10, 100, 40);
+        backButton.setBounds(15, 10, 120, 40);
         backButton.setFocusPainted(false);
         backButton.setContentAreaFilled(false);
         backButton.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
@@ -550,13 +734,92 @@ class MainPanel extends JPanel {
                 backButton.setForeground(Color.WHITE);
             }
         });
+
         backButton.addActionListener(e -> {
             currentFrame.dispose();
-            if (previousFrame != null)
+            if (previousFrame != null) {
                 previousFrame.setVisible(true);
+            }
         });
 
         return backButton;
     }
 }
 
+
+//    private void showClientLobby(String playerName, GameClient client, JFrame previousFrame) {
+//        JFrame lobby = new JFrame("Soyer VS Zombies - Lobby");
+//        lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+//        lobby.setResizable(false);
+//
+//        JLabel bgLobby = new JLabel(bgIcon);
+//        bgLobby.setLayout(null);
+//        lobby.setContentPane(bgLobby);
+//
+//        JPanel ipPanel = new JPanel(null);
+//        ipPanel.setBackground(new Color(54, 54, 48, 220));
+//        ipPanel.setBounds(70, 50, 430, 70);
+//        bgLobby.add(ipPanel);
+//
+//        JLabel statusLabel = new JLabel("Connected to server...");
+//        statusLabel.setFont(new Font("Arial", Font.BOLD, 34));
+//        statusLabel.setForeground(new Color(193, 193, 193));
+//        statusLabel.setBounds(18, 10, 390, 50);
+//        ipPanel.add(statusLabel);
+//
+//        JPanel playersPanel = new JPanel(null);
+//        playersPanel.setBackground(new Color(54, 54, 48, 220));
+//        playersPanel.setBounds(70, 130, 600, 330);
+//        bgLobby.add(playersPanel);
+//
+//        JLabel playersTitle = new JLabel("Players");
+//        playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
+//        playersTitle.setForeground(new Color(193, 193, 193));
+//        playersTitle.setBounds(18, 8, 400, 50);
+//        playersPanel.add(playersTitle);
+//
+//        DefaultListModel<String> model = new DefaultListModel<>();
+//        JList<String> playerList = new JList<>(model);
+//        playerList.setFont(new Font("Arial", Font.PLAIN, 24));
+//        playerList.setForeground(new Color(220, 220, 220));
+//        playerList.setOpaque(false);
+//
+//        JScrollPane scroll = new JScrollPane(playerList);
+//        scroll.setOpaque(false);
+//        scroll.getViewport().setOpaque(false);
+//        scroll.setBorder(BorderFactory.createEmptyBorder());
+//        scroll.setBounds(18, 60, 560, 250);
+//        playersPanel.add(scroll);
+//
+//        model.addElement(playerName + " (You)");
+//
+//        JButton backBtn = createBackButton(lobby, previousFrame);
+//        backBtn.addActionListener(e -> {
+//            client.disconnect();
+//            lobby.dispose();
+//        });
+//        bgLobby.add(backBtn);
+//
+//        JButton readyBtn = new JButton("Ready");
+//        readyBtn.setFont(new Font("Arial", Font.BOLD, 28));
+//        readyBtn.setForeground(Color.WHITE);
+//        readyBtn.setBackground(new Color(76, 175, 80));
+//        readyBtn.setOpaque(true);
+//        readyBtn.setContentAreaFilled(true);
+//        readyBtn.setBorderPainted(false);
+//        readyBtn.setFocusPainted(false);
+//
+//        int btnW = 200, btnH = 60;
+//        readyBtn.setSize(btnW, btnH);
+//        int btnY = playersPanel.getY() + playersPanel.getHeight();
+//        readyBtn.setLocation((bgIcon.getIconWidth() - btnW) / 2, btnY);
+//
+//        readyBtn.addActionListener(e -> client.sendMessage("PLAYER_READY:" + playerName));
+//
+//        bgLobby.add(readyBtn);
+//        lobby.pack();
+//        lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+//        lobby.setLocationRelativeTo(null);
+//        lobby.setVisible(true);
+//    }
+//}

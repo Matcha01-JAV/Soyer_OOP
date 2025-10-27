@@ -5,8 +5,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-
+import java.util.Map;
+import java.util.HashMap;
+import network.*;  // Add network package import
 
 /**
  * เกม Soyer vs Zombies
@@ -21,23 +22,6 @@ public class Test {
 }
 
 /** เฟรมหลักของเกม */
- class GameFrame extends JFrame {
-    // เผื่อใครเรียกแบบไม่ส่งชื่อ
-    GameFrame() {
-        this("Player");
-    }
-
-    // ใช้คอนสตรัคเตอร์นี้เวลามาจาก Main พร้อมชื่อผู้เล่น
-    GameFrame(String playerName) {
-        setTitle("Soyer vs Zombies");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false);
-        add(new GamePanel(playerName));   // ← ส่งชื่อต่อให้ GamePanel
-        pack();
-        setLocationRelativeTo(null);
-        setVisible(true);
-    }
-}
 
 /** พื้นที่หลักของเกม (Canvas) */
 class GamePanel extends JPanel implements ActionListener {
@@ -47,6 +31,11 @@ class GamePanel extends JPanel implements ActionListener {
 
     // ชื่อผู้เล่นที่รับมาจากฝั่ง Main
     String playerName;
+    
+    // Multiplayer support
+    boolean isMultiplayer = false;
+    GameClient gameClient = null;
+    Map<String, Player> otherPlayers = new HashMap<>();
 
     ImageIcon bgIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
@@ -74,7 +63,19 @@ class GamePanel extends JPanel implements ActionListener {
     // คอนสตรัคเตอร์หลัก: รับชื่อแล้วเก็บไว้
     GamePanel(String name) {
         this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
-
+        this.isMultiplayer = false;
+        initializeGame();
+    }
+    
+    // Constructor for multiplayer game
+    GamePanel(String name, GameClient client) {
+        this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
+        this.gameClient = client;
+        this.isMultiplayer = true;
+        initializeGame();
+    }
+    
+    private void initializeGame() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.BLACK);
         setFocusable(true);
@@ -112,14 +113,30 @@ class GamePanel extends JPanel implements ActionListener {
                     player.moveLeft();
                 if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D)
                     player.moveRight();
+                
+                // Send player position to other players in multiplayer mode
+                if (isMultiplayer && gameClient != null) {
+                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+                }
             }
         });
+        
+        // Set up network message listener for multiplayer mode
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("PLAYER_READY:" + playerName);
+        }
     }
 
     /** ยิงกระสุน */
     void shoot() {
         if (gameOver) return;
         bullets.add(new Bullet(player.x + player.size, player.y + player.size / 2 - 5));
+        
+        // In multiplayer, send bullet information to other players
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("PLAYER_SHOOT:" + playerName + ":" + 
+                (player.x + player.size) + "," + (player.y + player.size / 2 - 5));
+        }
     }
 
     /** สุ่มเกิดซอมบี้ */
@@ -130,6 +147,11 @@ class GamePanel extends JPanel implements ActionListener {
         int roadBottomY = 700;
         int y = roadTopY + random.nextInt(Math.max(1, roadBottomY - roadTopY - 40));
         zombies.add(new Zombie(WIDTH - 50, y));
+        
+        // In multiplayer, send zombie information to other players
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("ZOMBIE_SPAWN:" + (WIDTH - 50) + "," + y);
+        }
     }
 
     /** วาดทุกอย่าง */
@@ -140,6 +162,14 @@ class GamePanel extends JPanel implements ActionListener {
 
         // วาดผู้เล่น
         player.draw(g);
+
+        // วาดผู้เล่นคนอื่นในโหมด multiplayer
+        if (isMultiplayer) {
+            for (Player otherPlayer : otherPlayers.values()) {
+                otherPlayer.draw(g);
+                drawPlayerName((Graphics2D) g, otherPlayer);
+            }
+        }
 
         // วาดชื่อผู้เล่นเหนือหัว (← ตรงนี้คือชื่อจาก Main)
         drawPlayerName((Graphics2D) g);
@@ -198,6 +228,32 @@ class GamePanel extends JPanel implements ActionListener {
         g2.setColor(Color.WHITE);
         g2.drawString(playerName, nameX, nameY);
     }
+    
+    /** วาดชื่อผู้เล่นอื่นให้อยู่เหนือหัว */
+    private void drawPlayerName(Graphics2D g2, Player player) {
+        if (player == null) return;
+
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        Font font = new Font("Tahoma", Font.BOLD, 18);
+        g2.setFont(font);
+        FontMetrics fm = g2.getFontMetrics();
+
+        // Find player name from the player object (in a real implementation, 
+        // we would store player names with their objects)
+        // For now, we'll use a default name since we don't have access to the actual player name
+        String playerName = "Player";
+        
+        int textW = fm.stringWidth(playerName);
+        int textH = fm.getAscent();
+
+        int centerX = player.x + player.size / 2;
+        int nameX = centerX - textW / 2;
+        int nameY = player.y - 12;             // ยกขึ้นเหนือหัว
+        if (nameY - textH < 0) nameY = textH + 4;
+
+        g2.setColor(Color.YELLOW);  // Different color for other players
+        g2.drawString(playerName, nameX, nameY);
+    }
 
     /** อัปเดตเกมแต่ละเฟรม */
     @Override
@@ -221,6 +277,10 @@ class GamePanel extends JPanel implements ActionListener {
                     if (z.health <= 0) {
                         zombiesToRemove.add(z);
                         score += 10;
+                        // In multiplayer, send zombie killed information to other players
+                        if (isMultiplayer && gameClient != null) {
+                            gameClient.sendMessage("ZOMBIE_KILLED:" + z.x + "," + z.y);
+                        }
                     }
                 }
             }
@@ -271,6 +331,70 @@ class GamePanel extends JPanel implements ActionListener {
         zombieTimer.start();
         requestFocusInWindow();
     }
+    
+    /**
+     * Handle network messages in multiplayer mode
+     */
+    public void handleNetworkMessage(String message) {
+        if (!isMultiplayer) return;
+        
+        try {
+            if (message.startsWith("PLAYER_POSITION:")) {
+                String[] parts = message.substring("PLAYER_POSITION:".length()).split(":");
+                if (parts.length >= 2) {
+                    String playerName = parts[0];
+                    String[] coords = parts[1].split(",");
+                    if (coords.length >= 2) {
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        
+                        // Update or create player
+                        Player otherPlayer = otherPlayers.get(playerName);
+                        if (otherPlayer == null) {
+                            otherPlayer = new Player(x, y);
+                            otherPlayers.put(playerName, otherPlayer);
+                        } else {
+                            otherPlayer.x = x;
+                            otherPlayer.y = y;
+                        }
+                    }
+                }
+            } else if (message.startsWith("PLAYER_SHOOT:")) {
+                String[] parts = message.substring("PLAYER_SHOOT:".length()).split(":");
+                if (parts.length >= 2) {
+                    String playerName = parts[0];
+                    String[] coords = parts[1].split(",");
+                    if (coords.length >= 2) {
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        bullets.add(new Bullet(x, y));
+                    }
+                }
+            } else if (message.startsWith("ZOMBIE_SPAWN:")) {
+                String[] coords = message.substring("ZOMBIE_SPAWN:".length()).split(",");
+                if (coords.length >= 2) {
+                    int x = Integer.parseInt(coords[0]);
+                    int y = Integer.parseInt(coords[1]);
+                    zombies.add(new Zombie(x, y));
+                }
+            } else if (message.startsWith("ZOMBIE_KILLED:")) {
+                String[] coords = message.substring("ZOMBIE_KILLED:".length()).split(",");
+                if (coords.length >= 2) {
+                    int x = Integer.parseInt(coords[0]);
+                    int y = Integer.parseInt(coords[1]);
+                    // Remove zombie at position (in a real implementation, we would match by ID)
+                    zombies.removeIf(z -> z.x == x && z.y == y);
+                }
+            } else if (message.startsWith("GAME_START")) {
+                // Game started by host
+                gameOver = false;
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing network message: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error handling network message: " + e.getMessage());
+        }
+    }
 }
 
 /** คลาสผู้เล่น */
@@ -298,7 +422,7 @@ class Player {
             x -= speed;
     }
     void moveRight() {
-        if (x < GamePanel.HEIGHT - size)
+        if (x < GamePanel.WIDTH - size)
             x += speed;
     }
     void moveDown() {
