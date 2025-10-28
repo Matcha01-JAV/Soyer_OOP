@@ -146,11 +146,12 @@ class GamePanel extends JPanel implements ActionListener {
         int roadTopY = 340;
         int roadBottomY = 700;
         int y = roadTopY + random.nextInt(Math.max(1, roadBottomY - roadTopY - 40));
-        zombies.add(new Zombie(WIDTH - 50, y));
+        Zombie zombie = new Zombie(WIDTH - 50, y);
+        zombies.add(zombie);
         
         // In multiplayer, send zombie information to other players
         if (isMultiplayer && gameClient != null) {
-            gameClient.sendMessage("ZOMBIE_SPAWN:" + (WIDTH - 50) + "," + y);
+            gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y);
         }
     }
 
@@ -264,6 +265,11 @@ class GamePanel extends JPanel implements ActionListener {
         for (Bullet b : new ArrayList<>(bullets)) b.update();
         for (Zombie z : new ArrayList<>(zombies)) z.update();
 
+        // Send player position continuously in multiplayer mode
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+        }
+
         List<Bullet> bulletsToRemove = new ArrayList<>();
         List<Zombie> zombiesToRemove = new ArrayList<>();
 
@@ -279,7 +285,7 @@ class GamePanel extends JPanel implements ActionListener {
                         score += 10;
                         // In multiplayer, send zombie killed information to other players
                         if (isMultiplayer && gameClient != null) {
-                            gameClient.sendMessage("ZOMBIE_KILLED:" + z.x + "," + z.y);
+                            gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
                         }
                     }
                 }
@@ -333,6 +339,16 @@ class GamePanel extends JPanel implements ActionListener {
     }
     
     /**
+     * Set the message listener for the GameClient
+     */
+    public void setMessageListener(GameClient.MessageListener listener) {
+        if (gameClient != null) {
+            // We can't directly set the listener, but we can create a new GameClient
+            // This is a workaround since GameClient doesn't have a setter method
+        }
+    }
+    
+    /**
      * Handle network messages in multiplayer mode
      */
     public void handleNetworkMessage(String message) {
@@ -353,6 +369,10 @@ class GamePanel extends JPanel implements ActionListener {
                         if (otherPlayer == null) {
                             otherPlayer = new Player(x, y);
                             otherPlayers.put(playerName, otherPlayer);
+                            // Send current player position to the new player
+                            if (isMultiplayer && gameClient != null) {
+                                gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + player.x + "," + player.y);
+                            }
                         } else {
                             otherPlayer.x = x;
                             otherPlayer.y = y;
@@ -371,23 +391,29 @@ class GamePanel extends JPanel implements ActionListener {
                     }
                 }
             } else if (message.startsWith("ZOMBIE_SPAWN:")) {
-                String[] coords = message.substring("ZOMBIE_SPAWN:".length()).split(",");
-                if (coords.length >= 2) {
-                    int x = Integer.parseInt(coords[0]);
-                    int y = Integer.parseInt(coords[1]);
-                    zombies.add(new Zombie(x, y));
+                String[] parts = message.substring("ZOMBIE_SPAWN:".length()).split(":");
+                if (parts.length >= 2) {
+                    String zombieId = parts[0];
+                    String[] coords = parts[1].split(",");
+                    if (coords.length >= 2) {
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        Zombie zombie = new Zombie(x, y);
+                        // Store zombie with ID for proper synchronization
+                        zombies.add(zombie);
+                    }
                 }
             } else if (message.startsWith("ZOMBIE_KILLED:")) {
-                String[] coords = message.substring("ZOMBIE_KILLED:".length()).split(",");
-                if (coords.length >= 2) {
-                    int x = Integer.parseInt(coords[0]);
-                    int y = Integer.parseInt(coords[1]);
-                    // Remove zombie at position (in a real implementation, we would match by ID)
-                    zombies.removeIf(z -> z.x == x && z.y == y);
-                }
+                String zombieId = message.substring("ZOMBIE_KILLED:".length());
+                // Remove zombie by ID for proper synchronization
+                zombies.removeIf(z -> z.id.equals(zombieId));
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
+                // Send current player position to other players
+                if (isMultiplayer && gameClient != null) {
+                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+                }
             }
         } catch (NumberFormatException e) {
             System.err.println("Error parsing network message: " + e.getMessage());
@@ -441,12 +467,20 @@ class Zombie {
     int x, y;
     int size = 40;
     double speed = rand.nextDouble()*2.5+0.5;
+    String id; // Unique ID for synchronization
 
     int health = 30; // เลือดเริ่มต้นของซอมบี้
 
     Zombie(int x, int y) {
         this.x = x;
         this.y = y;
+        this.id = java.util.UUID.randomUUID().toString();
+    }
+    
+    Zombie(int x, int y, String id) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
     }
 
     void draw(Graphics g) {

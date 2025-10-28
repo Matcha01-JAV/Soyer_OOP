@@ -444,7 +444,29 @@ class MainPanel extends JPanel {
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
                             if (serverVar != null) serverVar.startGame();
                             lobby.dispose();
-                            SwingUtilities.invokeLater(() -> new GameFrame(playerName));
+                            
+                            // Create a GameClient for the host to participate in the multiplayer game
+                            GameClient hostClient = new GameClient(playerName, message -> {
+                                // The host will receive its own messages through the server loopback
+                                // In a real implementation, we would handle this properly
+                            });
+                            
+                            // Connect the host client to its own server
+                            SwingUtilities.invokeLater(() -> {
+                                if (hostClient.connect("localhost", port)) {
+                                    GameFrame frame = new GameFrame(playerName, hostClient);
+                                    // Set up message forwarding to the game panel
+                                    hostClient.setMessageListener(msg -> {
+                                        GamePanel panel = frame.getGamePanel();
+                                        if (panel != null) {
+                                            panel.handleNetworkMessage(msg);
+                                        }
+                                    });
+                                } else {
+                                    // Fallback to solo mode if connection fails
+                                    new GameFrame(playerName);
+                                }
+                            });
                         });
 
                         bgLobby.add(startGameBtn);
@@ -458,7 +480,7 @@ class MainPanel extends JPanel {
                                 model.clear();
                                 model.addElement(playerName + " (Host)");
                                 for (String n : names) {
-                                    if (!n.equals(playerName) && n != null && !n.isBlank()) {
+                                    if (n != null && !n.isBlank() && !n.equals(playerName)) {
                                         model.addElement(n);
                                     }
                                 }
@@ -565,11 +587,33 @@ class MainPanel extends JPanel {
                         clientHolder[0] = new GameClient(pn, message -> {
                             SwingUtilities.invokeLater(() -> {
                                 if (message.startsWith("PLAYER_LIST:")) {
-
-
+                                    String[] players = message.substring("PLAYER_LIST:".length()).split(",");
+                                    modelRef[0].clear();
+                                    for (String player : players) {
+                                        if (!player.isEmpty()) {
+                                            modelRef[0].addElement(player);
+                                        }
+                                    }
+                                } else if (message.startsWith("PLAYER_JOINED:")) {
+                                    String player = message.substring("PLAYER_JOINED:".length());
+                                    if (!modelRef[0].contains(player)) {
+                                        modelRef[0].addElement(player);
+                                    }
+                                } else if (message.startsWith("PLAYER_LEFT:")) {
+                                    String player = message.substring("PLAYER_LEFT:".length());
+                                    modelRef[0].removeElement(player);
                                 } else if (message.startsWith("GAME_START")) {
                                     joinFrame.dispose();
-                                    SwingUtilities.invokeLater(() -> new GameFrame(selfName, clientHolder[0]));
+                                    SwingUtilities.invokeLater(() -> {
+                                        GameFrame frame = new GameFrame(selfName, clientHolder[0]);
+                                        // Set up message forwarding to the game panel
+                                        clientHolder[0].setMessageListener(msg -> {
+                                            GamePanel panel = frame.getGamePanel();
+                                            if (panel != null) {
+                                                panel.handleNetworkMessage(msg);
+                                            }
+                                        });
+                                    });
                                 }
                             });
                         });
@@ -582,6 +626,7 @@ class MainPanel extends JPanel {
                             // <<==== วางตรงนี้ ====>>
                             DefaultListModel<String> model = new DefaultListModel<>();
                             modelRef[0] = model;
+                            model.addElement(pn + " (You)");
 
                             JFrame lobby = new JFrame("Soyer VS Zombies - Lobby");
                             lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -600,22 +645,22 @@ class MainPanel extends JPanel {
                             playersTitle.setBounds(130,130,400,50);
                             playersPanel.add(playersTitle);
 
-                                JButton backBtn = createBackButton(lobby, playFrame);
-                                backBtn.addActionListener(e2 -> {
-                                    client.disconnect();
-                                    lobby.dispose();
-                                });
-                                bgLobby.add(backBtn);
+                            JButton backBtn = createBackButton(lobby, playFrame);
+                            backBtn.addActionListener(e2 -> {
+                                client.disconnect();
+                                lobby.dispose();
+                            });
+                            bgLobby.add(backBtn);
 
-                                lobby.addWindowListener(new java.awt.event.WindowAdapter() {
-                                    @Override public void windowClosed(java.awt.event.WindowEvent e3) {
-                                        client.disconnect();
-                                    }
-                                });
-                                lobby.pack();
-                                lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
-                                lobby.setLocationRelativeTo(null);
-                                lobby.setVisible(true);
+                            lobby.addWindowListener(new java.awt.event.WindowAdapter() {
+                                @Override public void windowClosed(java.awt.event.WindowEvent e3) {
+                                    client.disconnect();
+                                }
+                            });
+                            lobby.pack();
+                            lobby.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                            lobby.setLocationRelativeTo(null);
+                            lobby.setVisible(true);
 
                         } else {
                             JOptionPane.showMessageDialog(joinFrame, "Failed to connect to server",

@@ -80,7 +80,6 @@ public class ClientHandler implements Runnable {
         {
             server.broadcastExcept(message, playerName);
         }
-
     }
 
     public void sendMessage(String message) {

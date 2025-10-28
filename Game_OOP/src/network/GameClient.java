@@ -110,6 +110,13 @@ public class GameClient {
     }
     
     /**
+     * Set the message listener
+     */
+    public void setMessageListener(MessageListener listener) {
+        this.messageListener = listener;
+    }
+    
+    /**
      * Interface for handling incoming messages
      */
     public interface MessageListener {
