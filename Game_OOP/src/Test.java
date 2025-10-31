@@ -84,7 +84,7 @@ class GamePanel extends JPanel implements ActionListener {
         setFocusable(true);
 
         // สร้างผู้เล่น/ลิสต์
-        player = new Player(300, HEIGHT / 2 - 25);
+        player = new Player(300, 359); // Start in the middle of the road (359 is approximately center of road)
         zombies = new ArrayList<>();
         bullets = new ArrayList<>();
         
@@ -103,9 +103,9 @@ class GamePanel extends JPanel implements ActionListener {
         gameTimer = new javax.swing.Timer(16, this);
         gameTimer.start();
 
-        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 100ms ในโหมด multiplayer
+        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 50ms ในโหมด multiplayer (เพิ่มความถี่เพื่อป้องกันวาป)
         if (isMultiplayer && gameClient != null) {
-            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
+            syncTimer = new javax.swing.Timer(50, e -> syncGameState());
             syncTimer.start();
         }
 
@@ -126,7 +126,15 @@ class GamePanel extends JPanel implements ActionListener {
                 if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D)
                     player.moveRight();
                 
-                // Send player position to other players in multiplayer mode
+                // Send player position immediately when key is pressed to reduce warping
+                if (isMultiplayer && gameClient != null) {
+                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+                }
+            }
+            
+            @Override
+            public void keyReleased(KeyEvent e) {
+                // Send player position when key is released for smoother movement
                 if (isMultiplayer && gameClient != null) {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
                 }
@@ -184,6 +192,15 @@ class GamePanel extends JPanel implements ActionListener {
         
         // ส่งคะแนนของผู้เล่นนี้
         gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
+        
+        // ส่งตำแหน่งผู้เล่นนี้เพื่อให้มั่นใจว่าทุกคนมีข้อมูลที่ตรงกัน
+        gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+        int aliveFlag = gameOver ? 0 : 1;
+        gameClient.sendMessage(
+                "PLAYER_STATE:" + playerName + ":" +
+                        player.x + "," + player.y + "," + score + "," + !gameOver
+        );
+
     }
 
     /** วาดทุกอย่าง */
@@ -312,7 +329,7 @@ class GamePanel extends JPanel implements ActionListener {
         for (Bullet b : new ArrayList<>(bullets)) b.update();
         for (Zombie z : new ArrayList<>(zombies)) z.update();
 
-        // Send player position continuously in multiplayer mode
+        // Send player position continuously in multiplayer mode (backup sync)
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
         }
@@ -381,13 +398,17 @@ class GamePanel extends JPanel implements ActionListener {
         gameOver = false;
         zombies.clear();
         bullets.clear();
-        player = new Player(300, HEIGHT / 2 - 25);
+        player = new Player(300, 359); // Start in the middle of the road
         gameTimer.start();
         shootTimer.start();
         zombieTimer.start();
-        if (isMultiplayer && gameClient != null && syncTimer == null) {
-            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
-            syncTimer.start();
+        if (isMultiplayer && gameClient != null) {
+            if (syncTimer == null) {
+                syncTimer = new javax.swing.Timer(50, e -> syncGameState());
+            }
+            if (!syncTimer.isRunning()) {
+                syncTimer.start();
+            }
         }
         requestFocusInWindow();
     }
@@ -429,12 +450,47 @@ class GamePanel extends JPanel implements ActionListener {
                                 gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + player.x + "," + player.y);
                             }
                         } else {
+                            // Smooth position update to prevent warping
+                            // Instead of directly setting the position, we can interpolate
                             otherPlayer.x = x;
                             otherPlayer.y = y;
                         }
                     }
                 }
-            } else if (message.startsWith("PLAYER_SHOOT:")) {
+            }  else if (message.startsWith("PLAYER_STATE:")) {
+                // รูปแบบ: PLAYER_STATE:ชื่อผู้เล่น:x,y,score,isAlive
+                String messageContent = message.substring("PLAYER_STATE:".length());
+                int firstColon = messageContent.indexOf(':');
+                if (firstColon > 0) {
+                    String otherName = messageContent.substring(0, firstColon);
+                    String stateData = messageContent.substring(firstColon + 1);
+                    // ข้ามตัวเอง
+                    if (!otherName.equals(playerName)) {
+                        String[] fields = stateData.split(",");
+                        if (fields.length >= 4) {
+                            int x = Integer.parseInt(fields[0]);
+                            int y = Integer.parseInt(fields[1]);
+                            int sc = Integer.parseInt(fields[2]);
+                            // รองรับทั้ง "1/0" และ "true/false"
+                            boolean alive = "1".equals(fields[3]) || Boolean.parseBoolean(fields[3]);
+
+                            Player op = otherPlayers.get(otherName);
+                            if (op == null) {
+                                op = new Player(x, y);
+                                otherPlayers.put(otherName, op);
+                            } else {
+                                op.x = x;
+                                op.y = y;
+                            }
+                            // เก็บคะแนน/สถานะอื่น ๆ
+                            playerScores.put(otherName, sc);
+                            // ถ้าจะใช้ alive ในอนาคต สามารถเก็บลง map แยกได้
+                        }
+                    }
+                }
+            }
+
+            else if (message.startsWith("PLAYER_SHOOT:")) {
                 String[] parts = message.substring("PLAYER_SHOOT:".length()).split(":");
                 if (parts.length >= 2) {
                     String playerName = parts[0];

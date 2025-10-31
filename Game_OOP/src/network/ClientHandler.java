@@ -57,14 +57,30 @@ public class ClientHandler implements Runnable {
         if (message.startsWith("PLAYER_STATE:"))
         {
             String stateData = message.substring("PLAYER_STATE:".length());
-            server.broadcastExcept(message, playerName);
+            network.PlayerState st = network.PlayerState.fromString(stateData);
+            server.updatePlayerState(playerName, st);
         } else if (message.startsWith("START_GAME:"))
         {
             server.startGame();
         } else if (message.startsWith("PLAYER_POSITION:"))
         {
             String positionData = message.substring("PLAYER_POSITION:".length());
-            server.broadcastExcept("PLAYER_POSITION:" + positionData, playerName);
+            String[] parts = positionData.split(":");
+            if (parts.length >= 2) {
+                String[] coords = parts[1].split(",");
+                if (coords.length >= 2) {
+                    try {
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        // Create a PlayerState with just position, default score and alive status
+                        network.PlayerState state = new network.PlayerState(x, y, 0, true);
+                        server.updatePlayerState(parts[0], state);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Error parsing player position: " + e.getMessage());
+                    }
+                }
+            }
+            return;
         } else if (message.startsWith("PLAYER_SHOOT:"))
         {
             String shootData = message.substring("PLAYER_SHOOT:".length());

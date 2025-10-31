@@ -224,17 +224,11 @@ class MainPanel extends JPanel {
                 int randomNum = (int) (Math.random() * 9000) + 1000;
                 final String playerName;
                 if (name == null || name.isBlank()) {
-                    playerName = "Player" + randomNum;
+                    playerName = "Player" + ""+randomNum;
                 } else {
-                    playerName = name.trim() + randomNum;
+                    playerName = name.trim();
                 }
-                // Create a final variable for the clean name to use in lambda expressions
-                final String cleanPlayerName;
-                if (name == null || name.isBlank()) {
-                    cleanPlayerName = "Player";
-                } else {
-                    cleanPlayerName = name.trim();
-                }
+
 
                 JFrame playFrame = new JFrame("Soyer VS Zombies");
                 playFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -421,12 +415,8 @@ class MainPanel extends JPanel {
                         scroll.setBounds(18, 60, 560, 250);
                         playersPanel.add(scroll);
 
-                        // Use clean player name for display
-                        String displayName = finalName; // This is the original name without random number
-                        if (displayName == null || displayName.isBlank()) {
-                            displayName = "Player";
-                        }
-                        model.addElement(displayName + " (Host)");
+                        // Use player name for display
+                        model.addElement(playerName + " (Host)");
 
                         lobby.getRootPane().putClientProperty("server", server);
 
@@ -458,7 +448,7 @@ class MainPanel extends JPanel {
                             // Connect the host client to its own server
                             SwingUtilities.invokeLater(() -> {
                                 if (hostClient.connect("localhost", port)) {
-                                    GameFrame frame = new GameFrame(cleanPlayerName, hostClient);
+                                    GameFrame frame = new GameFrame(playerName, hostClient);
                                     // Set up message forwarding to the game panel
                                     hostClient.setMessageListener(msg -> {
                                         GamePanel panel = frame.getGamePanel();
@@ -468,7 +458,7 @@ class MainPanel extends JPanel {
                                     });
                                 } else {
                                     // Fallback to solo mode if connection fails
-                                    new GameFrame(cleanPlayerName);
+                                    new GameFrame(playerName);
                                 }
                             });
                         });
@@ -482,7 +472,7 @@ class MainPanel extends JPanel {
                             try {
                                 java.util.List<String> names = server.getPlayerNames();
                                 model.clear();
-                                model.addElement(cleanPlayerName + " (Host)");
+                                model.addElement(playerName + " (Host)");
                                 for (String n : names) {
                                     if (n != null && !n.isBlank() && !n.equals(playerName)) {
                                         model.addElement(n);
@@ -587,26 +577,31 @@ class MainPanel extends JPanel {
                         final String pn = playerName;
                         final GameClient[] clientHolder = new GameClient[1];
                         final DefaultListModel<String>[] modelRef = new DefaultListModel[]{null};
-                        final String selfName = cleanPlayerName; // Use clean name for display
+                        final String selfName = playerName;
 
                         clientHolder[0] = new GameClient(pn, message -> {
                             SwingUtilities.invokeLater(() -> {
                                 if (message.startsWith("PLAYER_LIST:")) {
                                     String[] players = message.substring("PLAYER_LIST:".length()).split(",");
-                                    modelRef[0].clear();
-                                    for (String player : players) {
-                                        if (!player.isEmpty()) {
-                                            modelRef[0].addElement(player);
+                                    if (modelRef[0] != null) {
+                                        modelRef[0].clear();
+                                        modelRef[0].addElement(playerName + " (You)"); // Add self first
+                                        for (String player : players) {
+                                            if (!player.isEmpty() && !player.equals(pn)) {
+                                                modelRef[0].addElement(player);
+                                            }
                                         }
                                     }
                                 } else if (message.startsWith("PLAYER_JOINED:")) {
                                     String player = message.substring("PLAYER_JOINED:".length());
-                                    if (!modelRef[0].contains(player)) {
+                                    if (modelRef[0] != null && !modelRef[0].contains(player) && !player.equals(pn)) {
                                         modelRef[0].addElement(player);
                                     }
                                 } else if (message.startsWith("PLAYER_LEFT:")) {
                                     String player = message.substring("PLAYER_LEFT:".length());
-                                    modelRef[0].removeElement(player);
+                                    if (modelRef[0] != null) {
+                                        modelRef[0].removeElement(player);
+                                    }
                                 } else if (message.startsWith("GAME_START")) {
                                     joinFrame.dispose();
                                     SwingUtilities.invokeLater(() -> {
@@ -628,10 +623,10 @@ class MainPanel extends JPanel {
                             // สร้าง Lobby ของฝั่ง Join
                             final GameClient client = clientHolder[0];
 
-                            // <<==== วางตรงนี้ ====>>>
+                            // Create player list
                             DefaultListModel<String> model = new DefaultListModel<>();
                             modelRef[0] = model;
-                            model.addElement(cleanPlayerName + " (You)"); // Use clean name for display
+                            model.addElement(playerName + " (You)");
 
                             JFrame lobby = new JFrame("Soyer VS Zombies - Lobby");
                             lobby.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -640,6 +635,7 @@ class MainPanel extends JPanel {
                             JLabel bgLobby = new JLabel(bgIcon);
                             bgLobby.setLayout(null);
                             lobby.setContentPane(bgLobby);
+                            
                             JPanel playersPanel = new JPanel(null);
                             playersPanel.setBackground(new Color(54, 54, 48, 220));
                             playersPanel.setBounds(70, 130, 600, 330);
@@ -680,7 +676,7 @@ class MainPanel extends JPanel {
 
                 soloButton.addActionListener(ev3 -> {
                     playFrame.dispose();
-                    SwingUtilities.invokeLater(() -> new GameFrame(cleanPlayerName));
+                    SwingUtilities.invokeLater(() -> new GameFrame(playerName));
                 });
             });
         });

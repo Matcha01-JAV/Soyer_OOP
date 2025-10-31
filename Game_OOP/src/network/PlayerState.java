@@ -10,8 +10,8 @@ public class PlayerState {
     public boolean isAlive;
     
     public PlayerState() {
-        this.x = 0;
-        this.y = 0;
+        this.x = 300;  // Default starting x position
+        this.y = 359;  // Default starting y position (middle of road)
         this.score = 0;
         this.isAlive = true;
     }
@@ -38,7 +38,7 @@ public class PlayerState {
                 int x = Integer.parseInt(parts[0]);
                 int y = Integer.parseInt(parts[1]);
                 int score = Integer.parseInt(parts[2]);
-                boolean isAlive = "1".equals(parts[3]);
+                boolean isAlive = "1".equals(parts[3]) || Boolean.parseBoolean(parts[3]);
                 return new PlayerState(x, y, score, isAlive);
             }
         } catch (NumberFormatException e) {
