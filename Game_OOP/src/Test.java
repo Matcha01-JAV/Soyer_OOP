@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.stream.Collectors;
+
 import network.*;  // Add network package import
 
 /**
@@ -36,8 +36,8 @@ class GamePanel extends JPanel implements ActionListener {
     // Multiplayer support
     boolean isMultiplayer = false;
     GameClient gameClient = null;
-    Map<String, Player> otherPlayers = new HashMap<>();
-    Map<String, Integer> playerScores = new HashMap<>(); // Track scores for each player
+    Map<String, Player> otherPlayers = new java.util.concurrent.ConcurrentHashMap<>();
+    Map<String, Integer> playerScores = new java.util.concurrent.ConcurrentHashMap<>(); // Track scores for each player
     boolean isHostPlayer = false; // Track if this player is the host
     boolean allPlayersDead = false; // Track if all players are dead
     JButton nextButton = null; // Button for host to restart when all players are dead
@@ -60,6 +60,7 @@ class GamePanel extends JPanel implements ActionListener {
 
     int score = 0; // This player's score
     boolean gameOver = false;
+    long lastPositionUpdate = 0; // Track last position update time
 
     // เผื่อเรียกแบบไม่ส่งชื่อ
     GamePanel() {
@@ -108,10 +109,22 @@ class GamePanel extends JPanel implements ActionListener {
         gameTimer = new javax.swing.Timer(16, this);
         gameTimer.start();
 
-        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 50ms ในโหมด multiplayer (เพิ่มความถี่เพื่อป้องกันวาป)
+        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 100ms ในโหมด multiplayer (ลดความถี่เพื่อป้องกันการกระตุก)
         if (isMultiplayer && gameClient != null) {
-            syncTimer = new javax.swing.Timer(50, e -> syncGameState());
+            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
             syncTimer.start();
+            
+            // Timer to check if all players are dead (every 1 second)
+            javax.swing.Timer checkTimer = new javax.swing.Timer(1000, e -> {
+                if (gameOver && areAllPlayersDead() && !allPlayersDead) {
+                    allPlayersDead = true;
+                    // When all players are dead, stop all timers
+                    gameTimer.stop();
+                    if (syncTimer != null) syncTimer.stop();
+                    repaint();
+                }
+            });
+            checkTimer.start();
         }
 
         // การควบคุมด้วยคีย์บอร์ด
@@ -119,38 +132,49 @@ class GamePanel extends JPanel implements ActionListener {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (gameOver) {
-                    // Only host can restart the game
-                    if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-                        if (isHost() && allPlayersDead) {
-                            restartGame();
-                            // Notify all clients that the game has restarted
-                            if (isMultiplayer && gameClient != null) {
-                                gameClient.sendMessage("HOST_RESTART");
-                            }
-                        }
+                    // Only allow restart in solo mode
+                    if (e.getKeyCode() == KeyEvent.VK_SPACE && !isMultiplayer) {
+                        restartGame();
                     }
                     return;
                 }
+                // เริ่มการเคลื่อนไหวเมื่อกดปุ่ม
                 if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_W)
-                    player.moveUp();
+                    player.startMoveUp();
                 if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S)
-                    player.moveDown();
+                    player.startMoveDown();
                 if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A)
-                    player.moveLeft();
+                    player.startMoveLeft();
                 if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D)
-                    player.moveRight();
+                    player.startMoveRight();
                 
-                // Send player position immediately when key is pressed to reduce warping
-                if (isMultiplayer && gameClient != null) {
-                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+                // Send position update when movement starts (with timing control)
+                long currentTime = System.currentTimeMillis();
+                if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 50)) {
+                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+                    lastPositionUpdate = currentTime;
                 }
             }
             
             @Override
             public void keyReleased(KeyEvent e) {
-                // Send player position when key is released for smoother movement
-                if (isMultiplayer && gameClient != null) {
-                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
+                if (gameOver) return;
+                
+                // หยุดการเคลื่อนไหวเมื่อปล่อยปุ่ม
+                if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_W)
+                    player.stopMoveUp();
+                if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S)
+                    player.stopMoveDown();
+                if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A)
+                    player.stopMoveLeft();
+                if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D)
+                    player.stopMoveRight();
+                
+                // Send position update when movement stops (with timing control)
+                long currentTime = System.currentTimeMillis();
+                if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 50)) {
+                    gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+                    lastPositionUpdate = currentTime;
                 }
             }
         });
@@ -158,18 +182,20 @@ class GamePanel extends JPanel implements ActionListener {
         // Set up network message listener for multiplayer mode
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("PLAYER_READY:" + playerName);
+            // Send initial position to synchronize with other players
+            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
         }
     }
 
     /** ยิงกระสุน */
     void shoot() {
         if (gameOver) return;
-        bullets.add(new Bullet(player.x + player.size, player.y + player.size / 2 - 5));
+        bullets.add(new Bullet((int)(player.x + player.size), (int)(player.y + player.size / 2 - 5)));
         
         // In multiplayer, send bullet information to other players
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("PLAYER_SHOOT:" + playerName + ":" + 
-                (player.x + player.size) + "," + (player.y + player.size / 2 - 5));
+                (int)(player.x + player.size) + "," + (int)(player.y + player.size / 2 - 5));
         }
     }
 
@@ -191,7 +217,7 @@ class GamePanel extends JPanel implements ActionListener {
 
     /** ซิงค์สถานะเกมกับผู้เล่นคนอื่น */
     void syncGameState() {
-        if (!isMultiplayer || gameClient == null || gameOver) return;
+        if (!isMultiplayer || gameClient == null) return;
         
         // ส่งตำแหน่งซอมบี้ทั้งหมด
         StringBuilder zombiePositions = new StringBuilder("ZOMBIE_POSITIONS:");
@@ -207,12 +233,13 @@ class GamePanel extends JPanel implements ActionListener {
         // ส่งคะแนนของผู้เล่นนี้
         gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
         
-        // ส่งตำแหน่งผู้เล่นนี้เพื่อให้มั่นใจว่าทุกคนมีข้อมูลที่ตรงกัน
-        gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
-        int aliveFlag = gameOver ? 0 : 1;
+        // ส่งตำแหน่งผู้เล่นเสมอ เพื่อให้ตำแหน่งตรงกันทุกฝั่ง
+        gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+        
+        // ส่งสถานะผู้เล่น (ไม่รวมตำแหน่ง เพื่อป้องกันการกระตุก)
         gameClient.sendMessage(
                 "PLAYER_STATE:" + playerName + ":" +
-                        player.x + "," + player.y + "," + score + "," + !gameOver
+                        "0,0," + score + "," + !gameOver  // ใช้ 0,0 เพื่อไม่ให้มีการอัปเดตตำแหน่ง
         );
 
     }
@@ -228,20 +255,26 @@ class GamePanel extends JPanel implements ActionListener {
 
         // วาดผู้เล่นคนอื่นในโหมด multiplayer
         if (isMultiplayer) {
-            for (Player otherPlayer : otherPlayers.values()) {
+            // Create a safe copy to avoid ConcurrentModificationException
+            Map<String, Player> safeOtherPlayers = new HashMap<>(otherPlayers);
+            for (Map.Entry<String, Player> entry : safeOtherPlayers.entrySet()) {
+                Player otherPlayer = entry.getValue();
+                String otherPlayerName = entry.getKey();
                 otherPlayer.draw(g);
-                drawPlayerName((Graphics2D) g, otherPlayer);
+                drawPlayerName((Graphics2D) g, otherPlayer, otherPlayerName);
             }
         }
 
         // วาดชื่อผู้เล่นเหนือหัว (← ตรงนี้คือชื่อจาก Main)
         drawPlayerName((Graphics2D) g);
 
-        // วาดกระสุน
-        for (Bullet b : bullets) b.draw(g);
+        // วาดกระสุน (safe copy to avoid ConcurrentModificationException)
+        List<Bullet> safeBullets = new ArrayList<>(bullets);
+        for (Bullet b : safeBullets) b.draw(g);
 
-        // วาดซอมบี้
-        for (Zombie z : zombies) z.draw(g);
+        // วาดซอมบี้ (safe copy to avoid ConcurrentModificationException)
+        List<Zombie> safeZombies = new ArrayList<>(zombies);
+        for (Zombie z : safeZombies) z.draw(g);
 
         // คะแนน
         g.setColor(Color.WHITE);
@@ -251,7 +284,9 @@ class GamePanel extends JPanel implements ActionListener {
         // แสดงคะแนนของผู้เล่นคนอื่นในโหมด multiplayer
         if (isMultiplayer) {
             int ys = 60;
-            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            // Create a safe copy to avoid ConcurrentModificationException
+            Map<String, Integer> safePlayerScores = new HashMap<>(playerScores);
+            for (Map.Entry<String, Integer> entry : safePlayerScores.entrySet()) {
                 if (!entry.getKey().equals(playerName)) {
                     if (entry.getValue() == -1) {
                         g.drawString(entry.getKey() + ": DIE ", 20, ys);
@@ -268,25 +303,28 @@ class GamePanel extends JPanel implements ActionListener {
             g.setColor(Color.RED);
             g.setFont(new Font("Tahoma", Font.BOLD, 50));
             
-            // Check if this is a client that died and is waiting for host
-            if (isMultiplayer && !isHost()) {
-                g.drawString("WAIT HOST", WIDTH / 2 - 200, HEIGHT / 2);
-                g.setFont(new Font("Tahoma", Font.BOLD, 20));
-                g.setColor(Color.YELLOW);
-                g.drawString("Waiting host", WIDTH / 2 - 150, HEIGHT / 2 + 40);
+            // Check if this is multiplayer mode
+            if (isMultiplayer) {
+                // Check if all players are dead
+                if (areAllPlayersDead()) {
+                    // All players are dead - show game over
+                    g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
+                    g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                    g.setColor(Color.YELLOW);
+                    g.drawString("All players died. Return to main menu to play again.", WIDTH / 2 - 220, HEIGHT / 2 + 40);
+                } else {
+                    // This player died but others are still alive
+                    g.drawString("YOU DIED", WIDTH / 2 - 120, HEIGHT / 2);
+                    g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                    g.setColor(Color.YELLOW);
+                    g.drawString("Waiting for other players to finish...", WIDTH / 2 - 180, HEIGHT / 2 + 40);
+                }
             } else {
+                // Solo mode - show restart option
                 g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
                 g.setFont(new Font("Tahoma", Font.BOLD, 20));
                 g.setColor(Color.YELLOW);
-                if (isHost()) {
-                    if (allPlayersDead) {
-                        g.drawString("All players dead. Press SPACE or click Next to restart", WIDTH / 2 - 250, HEIGHT / 2 + 40);
-                    } else {
-                        g.drawString("Waiting for all players to die...", WIDTH / 2 - 150, HEIGHT / 2 + 40);
-                    }
-                } else {
-                    g.drawString("You died. Waiting for host to restart the game...", WIDTH / 2 - 200, HEIGHT / 2 + 40);
-                }
+                g.drawString("Press SPACE to restart", WIDTH / 2 - 100, HEIGHT / 2 + 40);
             }
         }
     }
@@ -303,9 +341,11 @@ class GamePanel extends JPanel implements ActionListener {
         int textW = fm.stringWidth(playerName);
         int textH = fm.getAscent();
 
-        int centerX = player.x + player.size / 2;
+        // Position name above main player (using actual image dimensions: 60x75)
+        int imageWidth = 60;  // Actual image width used in draw method
+        int centerX = (int)(player.x + imageWidth / 2);
         int nameX = centerX - textW / 2;
-        int nameY = player.y - 12;             // ยกขึ้นเหนือหัว
+        int nameY = (int)(player.y - 8);     // Position above the image with more space
         if (nameY - textH < 0) nameY = textH + 4;
 
         /*// กล่องพื้นหลังโปร่ง ๆ ให้อ่านง่าย
@@ -325,54 +365,58 @@ class GamePanel extends JPanel implements ActionListener {
     }
     
     /** วาดชื่อผู้เล่นอื่นให้อยู่เหนือหัว */
-    private void drawPlayerName(Graphics2D g2, Player player) {
-        if (player == null) return;
+    private void drawPlayerName(Graphics2D g2, Player player, String name) {
+        if (player == null || name == null) return;
 
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         Font font = new Font("Tahoma", Font.BOLD, 18);
         g2.setFont(font);
         FontMetrics fm = g2.getFontMetrics();
-
-        // Find player name from the player object
-        String playerName = "Player";
-        // Look up the player name from our otherPlayers map
-        for (Map.Entry<String, Player> entry : otherPlayers.entrySet()) {
-            if (entry.getValue() == player) {
-                playerName = entry.getKey();
-                break;
-            }
-        }
         
-        int textW = fm.stringWidth(playerName);
+        int textW = fm.stringWidth(name);
         int textH = fm.getAscent();
 
-        int centerX = player.x + player.size / 2;
+        // All players use images with dimensions 60x75, so use consistent positioning
+        int imageWidth = 60;  // Actual image width used in draw method
+        int centerX = (int)(player.x + imageWidth / 2);
         int nameX = centerX - textW / 2;
-        int nameY = player.y - 12;             // ยกขึ้นเหนือหัว
+        int nameY = (int)(player.y - 8);     // Position above player image with more space
         if (nameY - textH < 0) nameY = textH + 4;
 
         g2.setColor(Color.YELLOW);  // Different color for other players
-        g2.drawString(playerName, nameX, nameY);
+        g2.drawString(name, nameX, nameY);
     }
 
     /** อัปเดตเกมแต่ละเฟรม */
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (gameOver) return;
+        // In multiplayer mode, continue updating even if this player is dead
+        // until all players are dead
+        if (gameOver && (!isMultiplayer || areAllPlayersDead())) {
+            return;
+        }
 
-        // อัปเดตตำแหน่ง
+        // Only update player-specific things if this player is alive
+        if (!gameOver) {
+            // อัปเดตตำแหน่งผู้เล่นแบบต่อเนื่อง
+            player.update();
+        }
+
+        // Send player position at consistent intervals (even when dead for synchronization)
+        long currentTime = System.currentTimeMillis();
+        if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 100)) {
+            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+            lastPositionUpdate = currentTime;
+        }
+
+        // อัปเดตตำแหน่ง (always update bullets and zombies so dead players can see the game)
         for (Bullet b : new ArrayList<>(bullets)) b.update();
         for (Zombie z : new ArrayList<>(zombies)) z.update();
-
-        // Send player position continuously in multiplayer mode (backup sync)
-        if (isMultiplayer && gameClient != null) {
-            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
-        }
 
         List<Bullet> bulletsToRemove = new ArrayList<>();
         List<Zombie> zombiesToRemove = new ArrayList<>();
 
-        // ชนกระสุน-ซอมบี้
+        // ชนกระสุน-ซอมบี้ (always process bullet-zombie collisions)
         for (Bullet b : bullets) {
             Rectangle br = b.getBounds();
             for (Zombie z : zombies) {
@@ -381,12 +425,15 @@ class GamePanel extends JPanel implements ActionListener {
                     bulletsToRemove.add(b);
                     if (z.health <= 0) {
                         zombiesToRemove.add(z);
-                        score += 10;
-                        // In multiplayer, send zombie killed information to other players
-                        if (isMultiplayer && gameClient != null) {
-                            gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
-                            // Send updated score
-                            gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
+                        // Only add score if this player is alive
+                        if (!gameOver) {
+                            score += 10;
+                            // In multiplayer, send zombie killed information to other players
+                            if (isMultiplayer && gameClient != null) {
+                                gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
+                                // Send updated score
+                                gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
+                            }
                         }
                     }
                 }
@@ -396,19 +443,22 @@ class GamePanel extends JPanel implements ActionListener {
         bullets.removeAll(bulletsToRemove);
         zombies.removeAll(zombiesToRemove);
 
-        // ซอมบี้ชนผู้เล่น → จบเกม
-        for (Zombie z : zombies) {
-            if (z.getBounds().intersects(player.getBounds())) {
-                endGame();
-                break;
+        // Only check collisions if this player is alive
+        if (!gameOver) {
+            // ซอมบี้ชนผู้เล่น → จบเกม
+            for (Zombie z : zombies) {
+                if (z.getBounds().intersects(player.getBounds())) {
+                    endGame();
+                    break;
+                }
             }
-        }
 
-        // ซอมบี้เดินถึง x = 250 → จบเกม
-        for (Zombie z : zombies) {
-            if (z.x <= 250) {
-                endGame();
-                break;
+            // ซอมบี้เดินถึง x = 250 → จบเกม
+            for (Zombie z : zombies) {
+                if (z.x <= 250) {
+                    endGame();
+                    break;
+                }
             }
         }
 
@@ -421,20 +471,32 @@ class GamePanel extends JPanel implements ActionListener {
     /** จบเกม */
     void endGame() {
         gameOver = true;
-        gameTimer.stop();
-        shootTimer.stop();
-        zombieTimer.stop();
-        if (syncTimer != null) syncTimer.stop();
+        
+        // In solo mode, stop all timers immediately
+        if (!isMultiplayer) {
+            gameTimer.stop();
+            shootTimer.stop();
+            zombieTimer.stop();
+            if (syncTimer != null) syncTimer.stop();
+        } else {
+            // In multiplayer mode, only stop player-specific timers
+            // Keep gameTimer running so dead players can see the game continue
+            shootTimer.stop(); // Stop shooting for this player
+            zombieTimer.stop(); // Stop spawning zombies for this player
+            // Keep syncTimer running to receive updates from other players
+        }
         
         // In multiplayer mode, notify other players about game over
         if (isMultiplayer && gameClient != null) {
+            // Send final position before marking as dead
+            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
             gameClient.sendMessage("PLAYER_DIED:" + playerName);
+            // Mark this player as dead in the scores
+            playerScores.put(playerName, -1);
         }
         
-        // If this is the host and we're in multiplayer mode, create the Next button
-        if (isMultiplayer && isHost()) {
-            createNextButton();
-        }
+        // Remove Next button creation for multiplayer mode
+        // Next button is only available in solo mode
     }
     
     private void createNextButton() {
@@ -506,16 +568,16 @@ class GamePanel extends JPanel implements ActionListener {
     
 
     private boolean areAllPlayersDead() {
-        if (!gameOver)
-        {
-            return false;
+        // In solo mode, if this player is dead, game is over
+        if (!isMultiplayer) {
+            return gameOver;
         }
+        
+        // In multiplayer mode, check if all players are marked as dead (-1)
         for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-            if (!entry.getKey().equals(playerName)) {
-                // If any player is not marked as dead (-1), return false
-                if (entry.getValue() != -1) {
-                    return false;
-                }
+            // If any player is not marked as dead (-1), return false
+            if (entry.getValue() != -1) {
+                return false;
             }
         }
         return true;
@@ -529,6 +591,17 @@ class GamePanel extends JPanel implements ActionListener {
         bullets.clear();
         player = new Player(300, 359); // Start in the middle of the road
         
+        // Reset player movement state for smooth movement
+        player.movingUp = false;
+        player.movingDown = false;
+        player.movingLeft = false;
+        player.movingRight = false;
+        
+        // Clear other players' scores but keep them in the game
+        for (String playerName : playerScores.keySet()) {
+            playerScores.put(playerName, 0);
+        }
+        
         // Remove the next button if it exists
         if (nextButton != null) {
             remove(nextButton);
@@ -540,13 +613,11 @@ class GamePanel extends JPanel implements ActionListener {
         zombieTimer.start();
         if (isMultiplayer && gameClient != null) {
             if (syncTimer == null) {
-                syncTimer = new javax.swing.Timer(50, e -> syncGameState());
+                syncTimer = new javax.swing.Timer(100, e -> syncGameState());
             }
             if (!syncTimer.isRunning()) {
                 syncTimer.start();
             }
-            // Notify other players that the game has restarted
-            gameClient.sendMessage("GAME_RESTART");
         }
         requestFocusInWindow();
         repaint();
@@ -568,7 +639,10 @@ class GamePanel extends JPanel implements ActionListener {
                         // Update or create player
                         Player otherPlayer = otherPlayers.get(playerName);
                         if (otherPlayer == null) {
-                            otherPlayer = new Player(x, y);
+                            // Create other players with different colors
+                            Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                            Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                            otherPlayer = new Player(x, y, playerColor);
                             otherPlayers.put(playerName, otherPlayer);
                             playerScores.put(playerName, 0); // Initialize score for new player
                             // Send current player position to the new player
@@ -576,10 +650,23 @@ class GamePanel extends JPanel implements ActionListener {
                                 gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + player.x + "," + player.y);
                             }
                         } else {
-                            // Smooth position update to prevent warping
-                            // Instead of directly setting the position, we can interpolate
-                            otherPlayer.x = x;
-                            otherPlayer.y = y;
+                            // Improved position interpolation to prevent stuttering
+                            double distance = Math.sqrt(Math.pow(x - otherPlayer.x, 2) + Math.pow(y - otherPlayer.y, 2));
+                            
+                            // If the distance is very large, teleport immediately
+                            if (distance > 150) {
+                                otherPlayer.x = x;
+                                otherPlayer.y = y;
+                            } else if (distance > 5) {
+                                // Use stronger interpolation for medium distances
+                                double lerpFactor = 0.3;
+                                otherPlayer.x = otherPlayer.x + (x - otherPlayer.x) * lerpFactor;
+                                otherPlayer.y = otherPlayer.y + (y - otherPlayer.y) * lerpFactor;
+                            } else {
+                                // For very small movements, update directly to avoid micro-stuttering
+                                otherPlayer.x = x;
+                                otherPlayer.y = y;
+                            }
                         }
                     }
                 }
@@ -602,11 +689,14 @@ class GamePanel extends JPanel implements ActionListener {
 
                             Player op = otherPlayers.get(otherName);
                             if (op == null) {
-                                op = new Player(x, y);
+                                // Create other players with different colors
+                                Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                                Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                                op = new Player(x, y, playerColor);
                                 otherPlayers.put(otherName, op);
                             } else {
-                                op.x = x;
-                                op.y = y;
+                                // Don't update position here - use PLAYER_POSITION messages only
+                                // This prevents conflicting position updates that cause stuttering
                             }
                             // เก็บคะแนน/สถานะอื่น ๆ
                             playerScores.put(otherName, sc);
@@ -697,34 +787,26 @@ class GamePanel extends JPanel implements ActionListener {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
                 }
             } else if (message.startsWith("PLAYER_DIED:")) {
-                // When another player dies, show that they are waiting for host to restart
+                // When another player dies, mark them as dead
                 String deadPlayer = message.substring("PLAYER_DIED:".length());
                 if (!deadPlayer.equals(playerName)) { // Don't process our own death message
                     playerScores.put(deadPlayer, -1); // Mark as dead with special score
-                    repaint();
                 }
                 
-                // If this is the host, check if all players are now dead
-                if (isHost() && isMultiplayer) {
-                    if (areAllPlayersDead()) {
-                        allPlayersDead = true;
-                        // Enable the Next button
-                        if (nextButton != null) {
-                            nextButton.setBackground(Color.GREEN);
-                            nextButton.setEnabled(true);
-                            nextButton.setText("Next");
-                        }
-                        repaint();
-                    }
+                // Check if all players are now dead and update display
+                if (areAllPlayersDead()) {
+                    allPlayersDead = true;
                 }
+                repaint();
+                
+                // In multiplayer mode, no restart functionality
+                // Players need to return to main menu to play again
             } else if (message.startsWith("GAME_RESTART")) {
-                // Only non-host players should restart when host sends this message
-                if (!isHost()) {
-                    restartGame();
-                }
+                // Restart functionality disabled in multiplayer mode
+                // Players should return to main menu to play again
             } else if (message.startsWith("HOST_RESTART")) {
-                // Explicit host restart command
-                restartGame();
+                // Restart functionality disabled in multiplayer mode
+                // Players should return to main menu to play again
             }
         } catch (NumberFormatException e) {
             System.err.println("Error parsing network message: " + e.getMessage());
@@ -748,43 +830,101 @@ class GamePanel extends JPanel implements ActionListener {
         return isHostPlayer;
     }
     
+
+    
 }
 
 /** คลาสผู้เล่น */
 class Player {
-    int x, y;
-    int size = 50;
-    int speed = 15;
+    double x, y; // เปลี่ยนเป็น double เพื่อการเคลื่อนไหวที่นุ่มนวล
+    int size = 60; // Increased size to better display player image
+    double speed = 1.5; // ลดความเร็วลงเพื่อให้เคลื่อนไหวนุ่มนวลขึ้น
+    Color playerColor = Color.CYAN; // สีของผู้เล่น (สำหรับผู้เล่นอื่น)
+    boolean isMainPlayer = false; // ตัวแปรเพื่อแยกผู้เล่นหลักกับผู้เล่นอื่น
+    
+    // โหลดรูปผู้เล่น
+    static ImageIcon playerIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "player1.png");
+    static Image playerImage = playerIcon.getImage();
+    
+    // ตัวแปรสำหรับการเคลื่อนไหวแบบต่อเนื่อง
+    boolean movingUp = false;
+    boolean movingDown = false;
+    boolean movingLeft = false;
+    boolean movingRight = false;
 
     Player(int x, int y) {
         this.x = x;
         this.y = y;
+        this.isMainPlayer = true; // ผู้เล่นหลักใช้รูป player1.png
+    }
+    
+    Player(int x, int y, Color color) {
+        this.x = x;
+        this.y = y;
+        this.playerColor = color;
+        this.isMainPlayer = true; // เปลี่ยนให้ผู้เล่นอื่นใช้รูปเหมือนกัน
     }
 
     void draw(Graphics g) {
-        g.setColor(Color.CYAN);
-        g.fillOval(x, y, size, size);
+        Graphics2D g2 = (Graphics2D) g;
+        
+        if (playerColor == Color.CYAN) {
+            // Main player - draw normal image
+            g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
+        } else {
+            // Other players - draw image with color tint
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+            g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
+            
+            // Add colored overlay to distinguish players
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+            g2.setColor(playerColor);
+            g2.fillRect((int)x, (int)y, size, 75);
+            
+            // Reset composite
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        }
     }
 
-    void moveUp() {
-        if (y > 340)
+    // เมธอดสำหรับเริ่มการเคลื่อนไหว
+    void startMoveUp() { movingUp = true; }
+    void startMoveDown() { movingDown = true; }
+    void startMoveLeft() { movingLeft = true; }
+    void startMoveRight() { movingRight = true; }
+    
+    // เมธอดสำหรับหยุดการเคลื่อนไหว
+    void stopMoveUp() { movingUp = false; }
+    void stopMoveDown() { movingDown = false; }
+    void stopMoveLeft() { movingLeft = false; }
+    void stopMoveRight() { movingRight = false; }
+
+    // อัปเดตตำแหน่งแบบต่อเนื่อง
+    void update() {
+        if (movingUp && y > 340) {
             y -= speed;
-    }
-    void moveLeft() {
-        if (x > 250)
-            x -= speed;
-    }
-    void moveRight() {
-        if (x < GamePanel.WIDTH - size)
-            x += speed;
-    }
-    void moveDown() {
-        if (y < 640)
+        }
+        if (movingDown && y < 640) {
             y += speed;
+        }
+        if (movingLeft && x > 250) {
+            x -= speed;
+        }
+        if (movingRight && x < GamePanel.WIDTH - size) {
+            x += speed;
+        }
     }
+
+    // เมธอดเก่าเพื่อความเข้ากันได้ (deprecated)
+    void moveUp() { startMoveUp(); }
+    void moveLeft() { startMoveLeft(); }
+    void moveRight() { startMoveRight(); }
+    void moveDown() { startMoveDown(); }
 
     Rectangle getBounds() {
-        return new Rectangle(x, y, size, size);
+        // Use actual image dimensions for collision detection
+        return new Rectangle((int)x, (int)y, size, 75);
     }
 }
 
@@ -792,23 +932,29 @@ class Player {
 class Zombie {
     Random  rand = new Random();
     int x, y;
-    int size = 40;
+    int size = 50; // Increased size to better display zombie image
     double speed;
     String id; // Unique ID for synchronization
 
     int health = 30; // เลือดเริ่มต้นของซอมบี้
+    
+    // โหลดรูปซอมบี้
+    static ImageIcon zombieIcon = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "Zombie.png");
+    static Image zombieImage = zombieIcon.getImage();
 
     Zombie(int x, int y) {
         this.x = x;
         this.y = y;
-        this.speed = rand.nextDouble()*2.5+0.5;
+        this.speed = rand.nextDouble()*1+0.5;
         this.id = java.util.UUID.randomUUID().toString();
     }
     
     Zombie(int x, int y, String id) {
         this.x = x;
         this.y = y;
-        this.speed = rand.nextDouble()*2.5+0.5;
+        this.speed = rand.nextDouble()*1+0.5;
         this.id = id;
     }
     
@@ -820,8 +966,8 @@ class Zombie {
     }
 
     void draw(Graphics g) {
-        g.setColor(Color.GREEN);
-        g.fillRect(x, y, size, size);
+        // วาดรูปซอมบี้
+        g.drawImage(zombieImage, x, y, size, 75, null);
 
         // แถบ HP
         g.setColor(Color.RED);

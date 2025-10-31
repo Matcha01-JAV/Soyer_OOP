@@ -1,7 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import network.*;  // ใช้ GameClient/GameServer
+import network.*; // ใช้ GameClient/GameServer
 
 public class Main {
     public static void main(String[] args) {
@@ -30,7 +30,7 @@ class MainPanel extends JPanel {
     private final Image bg = bgIcon.getImage();
     private final ImageIcon bgIcon2 = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "ch.png");
+                    + File.separator + "game" + File.separator + "charbg.png");
     private final ImageIcon startIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "startnew.png");
@@ -67,7 +67,7 @@ class MainPanel extends JPanel {
         setLayout(null);
 
         // ขนาด/สไตล์ปุ่ม
-        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight()- 97);
+        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight() - 97);
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         Button(start);
@@ -78,7 +78,6 @@ class MainPanel extends JPanel {
 
         int startX = screenCenterX - startIcon.getIconWidth() / 2;
         int S = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
-
 
         int characterX = (screenCenterX - characterIcon.getIconWidth() / 2) + 200;
         character.setLocation(characterX, screenCenterY - 50);
@@ -182,14 +181,83 @@ class MainPanel extends JPanel {
                 }
 
                 characterFrame = new JFrame("Character Selection");
-                characterFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                characterFrame.setSize(500, 430);
+                characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                characterFrame.setSize(1248, 850);
                 characterFrame.setLocationRelativeTo(null);
                 characterFrame.setResizable(false);
 
                 JLabel bgLabel = new JLabel(bgIcon2);
-                bgLabel.setLayout(new BorderLayout());
+                bgLabel.setLayout(null); // Use absolute positioning for better control
                 characterFrame.setContentPane(bgLabel);
+
+                // Load and add soyer1.png character image
+                ImageIcon soyerIcon = new ImageIcon(
+                        System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                                + File.separator + "game" + File.separator + "soyer1.png");
+
+                JLabel soyerLabel = new JLabel(soyerIcon);
+                soyerLabel.setBounds(530, 300, soyerIcon.getIconWidth(), soyerIcon.getIconHeight());
+                bgLabel.add(soyerLabel);
+
+                // Add character name with background
+                JLabel soyerNameLabel = new JLabel("Soyer", JLabel.CENTER);
+                soyerNameLabel.setFont(new Font("Arial", Font.BOLD, 24));
+                soyerNameLabel.setForeground(Color.WHITE);
+                soyerNameLabel.setOpaque(true);
+                soyerNameLabel.setBackground(new Color(0, 0, 0, 150)); // Semi-transparent background
+                soyerNameLabel.setBounds(530, 300 + soyerIcon.getIconHeight() + 10, soyerIcon.getIconWidth(), 30);
+                bgLabel.add(soyerNameLabel);
+
+                // Add select button for the character
+                JButton selectSoyerBtn = new JButton("Select Soyer");
+                selectSoyerBtn.setFont(new Font("Arial", Font.BOLD, 18));
+                selectSoyerBtn.setBackground(new Color(76, 175, 80));
+                selectSoyerBtn.setForeground(Color.WHITE);
+                selectSoyerBtn.setFocusPainted(false);
+                selectSoyerBtn.setBounds(530 + (soyerIcon.getIconWidth() - 150) / 2,
+                        300 + soyerIcon.getIconHeight() + 50, 150, 40);
+
+                selectSoyerBtn.addActionListener(selectEvent -> {
+                    // Character selected, close character selection and return to game
+                    characterFrame.dispose();
+                    characterFrame = null;
+                    if (gameFrame != null) {
+                        gameFrame.setVisible(true);
+                    }
+                });
+
+                // Add hover effect
+                selectSoyerBtn.addMouseListener(new java.awt.event.MouseAdapter() {
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                        selectSoyerBtn.setBackground(new Color(102, 187, 106));
+                    }
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
+                        selectSoyerBtn.setBackground(new Color(76, 175, 80));
+                    }
+                });
+
+                bgLabel.add(selectSoyerBtn);
+
+                // Add back button
+                JButton backButton = new JButton("← Back");
+                backButton.setFont(new Font("Arial", Font.BOLD, 18));
+                backButton.setForeground(Color.WHITE);
+                backButton.setBackground(new Color(244, 67, 54));
+                backButton.setFocusPainted(false);
+                backButton.setBounds(50, 50, 100, 40);
+
+                backButton.addActionListener(backEvent -> {
+                    characterFrame.dispose();
+                    characterFrame = null;
+                    if (gameFrame != null) {
+                        gameFrame.setVisible(true);
+                    }
+                });
+
+                bgLabel.add(backButton);
                 characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosed(java.awt.event.WindowEvent windowEvent) {
@@ -224,7 +292,6 @@ class MainPanel extends JPanel {
                 } else {
                     playerName = name.trim();
                 }
-
 
                 JFrame playFrame = new JFrame("Soyer VS Zombies");
                 playFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -294,8 +361,7 @@ class MainPanel extends JPanel {
                     portField.addFocusListener(new java.awt.event.FocusAdapter() {
                         @Override
                         public void focusGained(java.awt.event.FocusEvent evt) {
-                            if (portField.getText().equals("INPUT PORT 1025 - 65535"))
-                            {
+                            if (portField.getText().equals("INPUT PORT 1025 - 65535")) {
                                 portField.setText("");
                                 portField.setForeground(new Color(210, 188, 148));
                             }
@@ -303,15 +369,15 @@ class MainPanel extends JPanel {
 
                         @Override
                         public void focusLost(java.awt.event.FocusEvent evt) {
-                            if (portField.getText().isEmpty())
-                            {
+                            if (portField.getText().isEmpty()) {
                                 portField.setText("INPUT PORT 1025 - 65535");
                                 portField.setForeground(new Color(210, 188, 148));
                             }
                         }
                     });
                     portField.setSize(400, 60);
-                    portField.setLocation((bgIcon.getIconWidth() - portField.getWidth()) / 2 - 80, (bgIcon.getIconHeight() / 2) - 40);
+                    portField.setLocation((bgIcon.getIconWidth() - portField.getWidth()) / 2 - 80,
+                            (bgIcon.getIconHeight() / 2) - 40);
                     bgLabelHost.add(portField);
 
                     JButton openPortBtn = new JButton(hostIcon);
@@ -339,11 +405,13 @@ class MainPanel extends JPanel {
                         try {
                             port = Integer.parseInt(portStr);
                             if (port < 1024 || port > 65535) {
-                                JOptionPane.showMessageDialog(hostFrame, "Port must be between 1024 and 65535", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                                JOptionPane.showMessageDialog(hostFrame, "Port must be between 1024 and 65535",
+                                        "Invalid Port", JOptionPane.ERROR_MESSAGE);
                                 return;
                             }
                         } catch (NumberFormatException ex) {
-                            JOptionPane.showMessageDialog(hostFrame, "Please enter a valid port number", "Invalid Port", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(hostFrame, "Please enter a valid port number", "Invalid Port",
+                                    JOptionPane.ERROR_MESSAGE);
                             return;
                         }
                         hostFrame.dispose();
@@ -354,10 +422,9 @@ class MainPanel extends JPanel {
                                 server.start();
                             } catch (Exception ey) {
                                 System.err.println("Server error: " + ey.getMessage());
-                                SwingUtilities.invokeLater(() ->
-                                        JOptionPane.showMessageDialog(null, "Failed to start server: " + ey.getMessage(),
-                                                "Server Error", JOptionPane.ERROR_MESSAGE)
-                                );
+                                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                                        "Failed to start server: " + ey.getMessage(),
+                                        "Server Error", JOptionPane.ERROR_MESSAGE));
                             }
                         }).start();
 
@@ -432,7 +499,8 @@ class MainPanel extends JPanel {
 
                         startGameBtn.addActionListener(ed -> {
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
-                            if (serverVar != null) serverVar.startGame();
+                            if (serverVar != null)
+                                serverVar.startGame();
                             lobby.dispose();
 
                             // Create a GameClient for the host to participate in the multiplayer game
@@ -483,7 +551,6 @@ class MainPanel extends JPanel {
                             }
                         });
                         poll.start();
-
 
                         lobby.addWindowListener(new java.awt.event.WindowAdapter() {
                             @Override
@@ -577,7 +644,7 @@ class MainPanel extends JPanel {
 
                         final String pn = playerName;
                         final GameClient[] clientHolder = new GameClient[1];
-                        final DefaultListModel<String>[] modelRef = new DefaultListModel[]{null};
+                        final DefaultListModel<String>[] modelRef = new DefaultListModel[] { null };
                         final String selfName = playerName;
 
                         clientHolder[0] = new GameClient(pn, message -> {
@@ -644,7 +711,7 @@ class MainPanel extends JPanel {
                             JLabel playersTitle = new JLabel("Waiting for Host...");
                             playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
                             playersTitle.setForeground(new Color(193, 193, 193));
-                            playersTitle.setBounds(130,130,400,50);
+                            playersTitle.setBounds(130, 130, 400, 50);
                             playersPanel.add(playersTitle);
 
                             JButton backBtn = createBackButton(lobby, playFrame);
@@ -655,7 +722,8 @@ class MainPanel extends JPanel {
                             bgLobby.add(backBtn);
 
                             lobby.addWindowListener(new java.awt.event.WindowAdapter() {
-                                @Override public void windowClosed(java.awt.event.WindowEvent e3) {
+                                @Override
+                                public void windowClosed(java.awt.event.WindowEvent e3) {
                                     client.disconnect();
                                 }
                             });
@@ -682,6 +750,7 @@ class MainPanel extends JPanel {
             });
         });
     }
+
     private void Button(AbstractButton b) {
         b.setOpaque(false);
         b.setContentAreaFilled(false);
@@ -689,7 +758,6 @@ class MainPanel extends JPanel {
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
-
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -729,4 +797,3 @@ class MainPanel extends JPanel {
         return backButton;
     }
 }
-

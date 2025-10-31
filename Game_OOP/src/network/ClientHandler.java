@@ -101,16 +101,12 @@ public class ClientHandler implements Runnable {
             server.broadcastExcept("PLAYER_DIED:" + playerName, playerName);
         } else if (message.startsWith("GAME_RESTART"))
         {
-            // Only host can restart the game
-            if (server.isHost(playerName)) {
-                server.broadcast("HOST_RESTART");
-            }
+            // Restart functionality disabled in multiplayer mode
+            // Players should return to main menu to play again
         } else if (message.startsWith("HOST_RESTART"))
         {
-            // Only host can send restart message
-            if (server.isHost(playerName)) {
-                server.broadcast("HOST_RESTART");
-            }
+            // Restart functionality disabled in multiplayer mode
+            // Players should return to main menu to play again
         }
     }
 
