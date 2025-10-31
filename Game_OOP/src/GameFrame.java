@@ -29,7 +29,7 @@ public class GameFrame extends JFrame {
 
     /** ตั้งค่าพื้นฐานที่ใช้ร่วมกัน */
     private void commonInit() {
-        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE); // ไม่ปิดทั้งแอป
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // ปิดทั้งแอปเมื่อปิดหน้าต่าง
         setResizable(false);
     }
 

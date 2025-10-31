@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 import network.*;  // Add network package import
 
 /**
@@ -36,6 +37,7 @@ class GamePanel extends JPanel implements ActionListener {
     boolean isMultiplayer = false;
     GameClient gameClient = null;
     Map<String, Player> otherPlayers = new HashMap<>();
+    Map<String, Integer> playerScores = new HashMap<>(); // Track scores for each player
 
     ImageIcon bgIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
@@ -46,13 +48,14 @@ class GamePanel extends JPanel implements ActionListener {
     javax.swing.Timer gameTimer;
     javax.swing.Timer shootTimer;
     javax.swing.Timer zombieTimer;
+    javax.swing.Timer syncTimer; // Timer for periodic synchronization
 
     Player player;
     List<Zombie> zombies;
     List<Bullet> bullets;
     Random random = new Random();
 
-    int score = 0;
+    int score = 0; // This player's score
     boolean gameOver = false;
 
     // เผื่อเรียกแบบไม่ส่งชื่อ
@@ -84,6 +87,9 @@ class GamePanel extends JPanel implements ActionListener {
         player = new Player(300, HEIGHT / 2 - 25);
         zombies = new ArrayList<>();
         bullets = new ArrayList<>();
+        
+        // Initialize player scores
+        playerScores.put(playerName, 0);
 
         // ยิงกระสุนทุก 0.5 วินาที
         shootTimer = new javax.swing.Timer(500, e -> shoot());
@@ -96,6 +102,12 @@ class GamePanel extends JPanel implements ActionListener {
         // อัปเดตเกม ~60 FPS
         gameTimer = new javax.swing.Timer(16, this);
         gameTimer.start();
+
+        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 100ms ในโหมด multiplayer
+        if (isMultiplayer && gameClient != null) {
+            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
+            syncTimer.start();
+        }
 
         // การควบคุมด้วยคีย์บอร์ด
         addKeyListener(new KeyAdapter() {
@@ -151,8 +163,27 @@ class GamePanel extends JPanel implements ActionListener {
         
         // In multiplayer, send zombie information to other players
         if (isMultiplayer && gameClient != null) {
-            gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y);
+            gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y + "," + zombie.speed);
         }
+    }
+
+    /** ซิงค์สถานะเกมกับผู้เล่นคนอื่น */
+    void syncGameState() {
+        if (!isMultiplayer || gameClient == null || gameOver) return;
+        
+        // ส่งตำแหน่งซอมบี้ทั้งหมด
+        StringBuilder zombiePositions = new StringBuilder("ZOMBIE_POSITIONS:");
+        for (Zombie z : zombies) {
+            zombiePositions.append(z.id).append(":").append(z.x).append(",").append(z.y).append(";");
+        }
+        if (zombiePositions.length() > "ZOMBIE_POSITIONS:".length()) {
+            // ลบ ; ตัวสุดท้ายออก
+            zombiePositions.setLength(zombiePositions.length() - 1);
+            gameClient.sendMessage(zombiePositions.toString());
+        }
+        
+        // ส่งคะแนนของผู้เล่นนี้
+        gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
     }
 
     /** วาดทุกอย่าง */
@@ -184,7 +215,18 @@ class GamePanel extends JPanel implements ActionListener {
         // คะแนน
         g.setColor(Color.WHITE);
         g.setFont(new Font("Tahoma", Font.BOLD, 20));
-        g.drawString("Score: " + score, 20, 30);
+        g.drawString("Your Score: " + score, 20, 30);
+        
+        // แสดงคะแนนของผู้เล่นคนอื่นในโหมด multiplayer
+        if (isMultiplayer) {
+            int yOffset = 60;
+            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+                if (!entry.getKey().equals(playerName)) {
+                    g.drawString(entry.getKey() + ": " + entry.getValue(), 20, yOffset);
+                    yOffset += 30;
+                }
+            }
+        }
 
         // Game Over
         if (gameOver) {
@@ -239,10 +281,15 @@ class GamePanel extends JPanel implements ActionListener {
         g2.setFont(font);
         FontMetrics fm = g2.getFontMetrics();
 
-        // Find player name from the player object (in a real implementation, 
-        // we would store player names with their objects)
-        // For now, we'll use a default name since we don't have access to the actual player name
+        // Find player name from the player object
         String playerName = "Player";
+        // Look up the player name from our otherPlayers map
+        for (Map.Entry<String, Player> entry : otherPlayers.entrySet()) {
+            if (entry.getValue() == player) {
+                playerName = entry.getKey();
+                break;
+            }
+        }
         
         int textW = fm.stringWidth(playerName);
         int textH = fm.getAscent();
@@ -286,6 +333,8 @@ class GamePanel extends JPanel implements ActionListener {
                         // In multiplayer, send zombie killed information to other players
                         if (isMultiplayer && gameClient != null) {
                             gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
+                            // Send updated score
+                            gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
                         }
                     }
                 }
@@ -323,6 +372,7 @@ class GamePanel extends JPanel implements ActionListener {
         gameTimer.stop();
         shootTimer.stop();
         zombieTimer.stop();
+        if (syncTimer != null) syncTimer.stop();
     }
 
     /** เริ่มเกมใหม่ */
@@ -335,6 +385,10 @@ class GamePanel extends JPanel implements ActionListener {
         gameTimer.start();
         shootTimer.start();
         zombieTimer.start();
+        if (isMultiplayer && gameClient != null && syncTimer == null) {
+            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
+            syncTimer.start();
+        }
         requestFocusInWindow();
     }
     
@@ -369,6 +423,7 @@ class GamePanel extends JPanel implements ActionListener {
                         if (otherPlayer == null) {
                             otherPlayer = new Player(x, y);
                             otherPlayers.put(playerName, otherPlayer);
+                            playerScores.put(playerName, 0); // Initialize score for new player
                             // Send current player position to the new player
                             if (isMultiplayer && gameClient != null) {
                                 gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + player.x + "," + player.y);
@@ -395,18 +450,62 @@ class GamePanel extends JPanel implements ActionListener {
                 if (parts.length >= 2) {
                     String zombieId = parts[0];
                     String[] coords = parts[1].split(",");
-                    if (coords.length >= 2) {
+                    if (coords.length >= 3) { // x, y, speed
                         int x = Integer.parseInt(coords[0]);
                         int y = Integer.parseInt(coords[1]);
-                        Zombie zombie = new Zombie(x, y);
+                        double speed = Double.parseDouble(coords[2]);
+                        Zombie zombie = new Zombie(x, y, zombieId, speed);
                         // Store zombie with ID for proper synchronization
                         zombies.add(zombie);
+                    } else if (coords.length >= 2) { // fallback for old format
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        Zombie zombie = new Zombie(x, y, zombieId);
+                        // Store zombie with ID for proper synchronization
+                        zombies.add(zombie);
+                    }
+                }
+            } else if (message.startsWith("ZOMBIE_POSITIONS:")) {
+                String[] zombieData = message.substring("ZOMBIE_POSITIONS:".length()).split(";");
+                // สร้าง map ของซอมบี้ที่มีอยู่แล้ว
+                Map<String, Zombie> existingZombies = new HashMap<>();
+                for (Zombie z : zombies) {
+                    existingZombies.put(z.id, z);
+                }
+                
+                // ประมวลผลข้อมูลซอมบี้ที่ได้รับ
+                for (String data : zombieData) {
+                    String[] parts = data.split(":");
+                    if (parts.length >= 3) {
+                        String id = parts[0];
+                        String[] coords = parts[1].split(",");
+                        if (coords.length >= 2) {
+                            int x = Integer.parseInt(coords[0]);
+                            int y = Integer.parseInt(coords[1]);
+                            // หาซอมบี้ที่มีอยู่แล้วหรือสร้างใหม่
+                            Zombie zombie = existingZombies.get(id);
+                            if (zombie == null) {
+                                // สร้างซอมบี้ใหม่ถ้ายังไม่มี
+                                zombie = new Zombie(x, y, id);
+                                zombies.add(zombie);
+                            }
+                            // อัปเดตตำแหน่ง
+                            zombie.x = x;
+                            zombie.y = y;
+                        }
                     }
                 }
             } else if (message.startsWith("ZOMBIE_KILLED:")) {
                 String zombieId = message.substring("ZOMBIE_KILLED:".length());
                 // Remove zombie by ID for proper synchronization
                 zombies.removeIf(z -> z.id.equals(zombieId));
+            } else if (message.startsWith("PLAYER_SCORE:")) {
+                String[] parts = message.substring("PLAYER_SCORE:".length()).split(":");
+                if (parts.length >= 2) {
+                    String playerName = parts[0];
+                    int playerScore = Integer.parseInt(parts[1]);
+                    playerScores.put(playerName, playerScore);
+                }
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
@@ -466,7 +565,7 @@ class Zombie {
     Random  rand = new Random();
     int x, y;
     int size = 40;
-    double speed = rand.nextDouble()*2.5+0.5;
+    double speed;
     String id; // Unique ID for synchronization
 
     int health = 30; // เลือดเริ่มต้นของซอมบี้
@@ -474,12 +573,21 @@ class Zombie {
     Zombie(int x, int y) {
         this.x = x;
         this.y = y;
+        this.speed = rand.nextDouble()*2.5+0.5;
         this.id = java.util.UUID.randomUUID().toString();
     }
     
     Zombie(int x, int y, String id) {
         this.x = x;
         this.y = y;
+        this.speed = rand.nextDouble()*2.5+0.5;
+        this.id = id;
+    }
+    
+    Zombie(int x, int y, String id, double speed) {
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
         this.id = id;
     }
 
