@@ -33,6 +33,9 @@ public class GameServer {
             client.sendMessage("PLAYER_STATE:" + e.getKey() + ":" + e.getValue().toString());
         }
     }
+    public void broadcastWinner(String winnerName) {
+        broadcast("PLAYER_WIN:" + winnerName);
+    }
     /**
      * Start the game server
      */
@@ -176,6 +179,9 @@ public class GameServer {
     public void updatePlayerState(String playerName, PlayerState state) {
         playerStates.put(playerName, state);
         broadcast("STATE|" + playerName + "|" + state.toString());
+        if (state.score >= 500) {
+            broadcastWinner(playerName);
+        }
     }
 
     /**

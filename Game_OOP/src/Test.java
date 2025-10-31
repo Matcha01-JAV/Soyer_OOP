@@ -11,21 +11,6 @@ import java.util.HashMap;
 
 import network.*;  // Add network package import
 
-/**
- * เกม Soyer vs Zombies
- * - รับชื่อผู้เล่นจากฝั่ง Main (แสดงเหนือหัว)
- * - ยิงอัตโนมัติ / ซอมบี้เกิด / ชนแล้วตาย / รีสตาร์ทได้
- */
-public class Test {
-   /* public static void main(String[] args) {
-        // รันเดี่ยว ๆ ให้มีชื่อเริ่มต้น "Player"
-        SwingUtilities.invokeLater(() -> new GameFrame("Player"));
-    }*/
-}
-
-/** เฟรมหลักของเกม */
-
-/** พื้นที่หลักของเกม (Canvas) */
 class GamePanel extends JPanel implements ActionListener {
 
     static final int WIDTH = 1262;
@@ -43,6 +28,7 @@ class GamePanel extends JPanel implements ActionListener {
     Map<String, String> playerCharacters = new java.util.concurrent.ConcurrentHashMap<>(); // Track character types for each player
     boolean isHostPlayer = false; // Track if this player is the host
     boolean allPlayersDead = false; // Track if all players are dead
+    String winnerName = null; // Track the winner's name for MVP display
     JButton nextButton = null; // Button for host to restart when all players are dead
 
     ImageIcon bgIcon = new ImageIcon(
@@ -103,6 +89,10 @@ class GamePanel extends JPanel implements ActionListener {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.BLACK);
         setFocusable(true);
+        
+        // Reset game state
+        gameOver = false;
+        winnerName = null; // Reset winner name
 
         // สร้างผู้เล่น/ลิสต์
         player = new Player(300, 359, characterType); // Start in the middle of the road (359 is approximately center of road)
@@ -148,10 +138,7 @@ class GamePanel extends JPanel implements ActionListener {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (gameOver) {
-                    // Only allow restart in solo mode
-                    if (e.getKeyCode() == KeyEvent.VK_SPACE && !isMultiplayer) {
-                        restartGame();
-                    }
+                    // Remove the restart functionality completely
                     return;
                 }
                 // เริ่มการเคลื่อนไหวเมื่อกดปุ่ม
@@ -323,33 +310,47 @@ class GamePanel extends JPanel implements ActionListener {
         if (gameOver) {
             g.setColor(Color.RED);
             g.setFont(new Font("Tahoma", Font.BOLD, 50));
-            
-            // Check if this is multiplayer mode
+
             if (isMultiplayer) {
-                // Check if all players are dead
                 if (areAllPlayersDead()) {
                     // All players are dead - show game over
-                    g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
+                    g.drawString("GAME OVER", WIDTH / 2 - 190, HEIGHT / 2);
                     g.setFont(new Font("Tahoma", Font.BOLD, 20));
                     g.setColor(Color.YELLOW);
                     g.drawString("All players died. Return to main menu to play again.", WIDTH / 2 - 220, HEIGHT / 2 + 40);
                 } else {
-                    // This player died but others are still alive
-                    g.drawString("YOU DIED", WIDTH / 2 - 120, HEIGHT / 2);
-                    g.setFont(new Font("Tahoma", Font.BOLD, 20));
-                    g.setColor(Color.YELLOW);
-                    g.drawString("Waiting for other players to finish...", WIDTH / 2 - 180, HEIGHT / 2 + 40);
+                    // Show MVP when there's a winner
+                    if (winnerName != null && !winnerName.isEmpty()) {
+                        g.drawString("MVP: " + winnerName, WIDTH / 2 , HEIGHT / 2);
+                        g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                        g.setColor(Color.YELLOW);
+                        g.drawString("First to reach 500 points!", WIDTH / 2, HEIGHT / 2 + 40);
+                    } else {
+                        // Check for a winner using the old method as fallback
+                        String winner = findWinner();
+                        if (winner != null && !winner.isEmpty()) {
+                            g.drawString("MVP: " + winner, WIDTH / 2 - 190, HEIGHT / 2);
+                            g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                            g.setColor(Color.YELLOW);
+                            g.drawString("First to reach 500 points!", WIDTH / 2 - 100, HEIGHT / 2 + 40);
+                        } else {
+                            g.drawString("YOU DIED", WIDTH / 2 - 190, HEIGHT / 2);
+                            g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                            g.setColor(Color.YELLOW);
+                            g.drawString("Waiting for other players to finish...", WIDTH / 2 - 100, HEIGHT / 2 + 40);
+                        }
+                    }
                 }
             } else {
-                // Solo mode - show restart option
-                g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
+                // Solo mode - show game over without restart option
+                g.drawString("GAME OVER", WIDTH / 2 - 100, HEIGHT / 2);
                 g.setFont(new Font("Tahoma", Font.BOLD, 20));
                 g.setColor(Color.YELLOW);
-                g.drawString("Press SPACE to restart", WIDTH / 2 - 100, HEIGHT / 2 + 40);
+                g.drawString("Return to main menu to play again", WIDTH / 2 - 100, HEIGHT / 2 + 40);
             }
         }
     }
-
+    
     /** วาดชื่อผู้เล่นให้อยู่เหนือหัว */
     private void drawPlayerName(Graphics2D g2) {
         if (playerName == null || playerName.isBlank()) return;
@@ -411,9 +412,8 @@ class GamePanel extends JPanel implements ActionListener {
     /** อัปเดตเกมแต่ละเฟรม */
     @Override
     public void actionPerformed(ActionEvent e) {
-        // In multiplayer mode, continue updating even if this player is dead
-        // until all players are dead
-        if (gameOver && (!isMultiplayer || areAllPlayersDead())) {
+        // Stop all game updates when game is over
+        if (gameOver) {
             return;
         }
 
@@ -448,7 +448,11 @@ class GamePanel extends JPanel implements ActionListener {
                         zombiesToRemove.add(z);
                         // Only add score if this player is alive
                         if (!gameOver) {
-                            score += 10;
+                            score += 100;
+                            // Check if this player has won
+                            if (score >= 500) {
+                                handlePlayerWin(playerName);
+                            }
                             // In multiplayer, send zombie killed information to other players
                             if (isMultiplayer && gameClient != null) {
                                 gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
@@ -493,19 +497,11 @@ class GamePanel extends JPanel implements ActionListener {
     void endGame() {
         gameOver = true;
         
-        // In solo mode, stop all timers immediately
-        if (!isMultiplayer) {
-            gameTimer.stop();
-            shootTimer.stop();
-            zombieTimer.stop();
-            if (syncTimer != null) syncTimer.stop();
-        } else {
-            // In multiplayer mode, only stop player-specific timers
-            // Keep gameTimer running so dead players can see the game continue
-            shootTimer.stop(); // Stop shooting for this player
-            zombieTimer.stop(); // Stop spawning zombies for this player
-            // Keep syncTimer running to receive updates from other players
-        }
+        // Stop all timers immediately for both solo and multiplayer modes
+        gameTimer.stop();
+        shootTimer.stop();
+        zombieTimer.stop();
+        if (syncTimer != null) syncTimer.stop();
         
         // In multiplayer mode, notify other players about game over
         if (isMultiplayer && gameClient != null) {
@@ -515,75 +511,25 @@ class GamePanel extends JPanel implements ActionListener {
             // Mark this player as dead in the scores
             playerScores.put(playerName, -1);
         }
-        
-        // Remove Next button creation for multiplayer mode
-        // Next button is only available in solo mode
     }
     
-    private void createNextButton() {
-        if (nextButton == null) {
-            nextButton = new JButton("Next");
-            nextButton.setFont(new Font("Tahoma", Font.BOLD, 20));
-            nextButton.setBounds(WIDTH / 2 - 75, HEIGHT / 2 + 150, 150, 60);
-            nextButton.setBackground(Color.GRAY);
-            nextButton.setForeground(Color.WHITE);
-            nextButton.setFocusPainted(false);
-            nextButton.setEnabled(false);
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            nextButton.addActionListener(e -> {
-                if (areAllPlayersDead()) {
-                    if (isMultiplayer && gameClient != null) {
-                        gameClient.sendMessage("HOST_RESTART");
-                    }
-                    revalidate();
-                    repaint();
-                    
-                    // Show MVP screen
-                    JFrame last = new JFrame("MVP");
-                    last.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                    last.setResizable(false);
-                    JLabel lbg = new JLabel(bgIcon);
-                    lbg.setLayout(null);
-                    lbg.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
-                    JPanel card = new JPanel(null);
-                    card.setBackground(new Color(54,54,48));
-                    card.setBounds(200, 120, 400, 300);
-                    card.setBorder(BorderFactory.createLineBorder(new Color(35,34,29), 4, true));
-
-                    JLabel title = new JLabel("MVP", SwingConstants.CENTER);
-                    title.setFont(new Font("Arial", Font.BOLD, 48));
-                    title.setForeground(Color.WHITE);
-                    title.setBounds(0, 20, 400, 60);
-                    card.add(title);
-
-                    JLabel name = new JLabel("name: Player");
-                    name.setFont(new Font("Arial", Font.PLAIN, 22));
-                    name.setForeground(Color.WHITE);
-                    name.setBounds(40, 100, 300, 40);
-                    card.add(name);
-
-                    JLabel score = new JLabel("Score: 1200");
-                    score.setFont(new Font("Arial", Font.PLAIN, 22));
-                    score.setForeground(Color.WHITE);
-                    score.setBounds(40, 140, 300, 40);
-                    card.add(score);
-
-                    JLabel bottom = new JLabel("ตัวละคร", SwingConstants.CENTER);
-                    bottom.setFont(new Font("Arial", Font.BOLD, 28));
-                    bottom.setForeground(Color.WHITE);
-                    bottom.setBounds(0, 220, 400, 50);
-                    card.add(bottom);
-
-                    last.pack();
-                    last.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
-                    last.setLocationRelativeTo(null);
-                    last.setVisible(true);
-                }
-            });
-            add(nextButton);
-            setComponentZOrder(nextButton, 0);
+    /** Handle player win condition */
+    void handlePlayerWin(String winnerName) {
+        // Stop the game for all players
+        gameOver = true;
+        this.winnerName = winnerName; // Store the winner's name for MVP display
+        
+        // Stop all timers immediately for both solo and multiplayer modes
+        gameTimer.stop();
+        shootTimer.stop();
+        zombieTimer.stop();
+        if (syncTimer != null) syncTimer.stop();
+        
+        // In multiplayer mode, notify other players about the win
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("PLAYER_WIN:" + winnerName);
         }
+        
         repaint();
     }
     
@@ -611,54 +557,6 @@ class GamePanel extends JPanel implements ActionListener {
         return true;
     }
 
-    void restartGame() {
-        score = 0;
-        gameOver = false;
-        allPlayersDead = false;
-        zombies.clear();
-        bullets.clear();
-        player = new Player(300, 359); // Start in the middle of the road
-        
-        // Reset player movement state for smooth movement
-        player.movingUp = false;
-        player.movingDown = false;
-        player.movingLeft = false;
-        player.movingRight = false;
-        
-        // Reset player scores for all players
-        // In multiplayer, we need to keep other players in the game
-        if (!isMultiplayer) {
-            // In solo mode, clear all scores
-            playerScores.clear();
-            playerScores.put(playerName, 0);
-        } else {
-            // In multiplayer mode, reset scores but keep players
-            for (String playerName : playerScores.keySet()) {
-                playerScores.put(playerName, 0);
-            }
-        }
-        
-        // Remove the next button if it exists
-        if (nextButton != null) {
-            remove(nextButton);
-            nextButton = null;
-        }
-        
-        gameTimer.start();
-        shootTimer.start();
-        zombieTimer.start();
-        if (isMultiplayer && gameClient != null) {
-            if (syncTimer == null) {
-                syncTimer = new javax.swing.Timer(100, e -> syncGameState());
-            }
-            if (!syncTimer.isRunning()) {
-                syncTimer.start();
-            }
-        }
-        requestFocusInWindow();
-        repaint();
-    }
-
     public void handleNetworkMessage(String message) {
         if (!isMultiplayer) return;
         
@@ -680,10 +578,12 @@ class GamePanel extends JPanel implements ActionListener {
                                 // Create other players with different colors
                                 Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
                                 Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                                otherPlayer = new Player(x, y, playerColor);
+                                // Get the character type for this player if available
+                                String playerCharacterType = playerCharacters.getOrDefault(playerName, "male");
+                                otherPlayer = new Player(x, y, playerColor, playerCharacterType);
                                 otherPlayers.put(playerName, otherPlayer);
                                 playerScores.put(playerName, 0); // Initialize score for new player
-                                System.out.println("Created player: " + playerName + " at (" + x + ", " + y + ")");
+                                System.out.println("Created player: " + playerName + " at (" + x + ", " + y + ") with character type: " + playerCharacterType);
                                 // Send current player position to the new player
                                 if (isMultiplayer && gameClient != null) {
                                     gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + (int)player.x + "," + (int)player.y);
@@ -800,6 +700,11 @@ class GamePanel extends JPanel implements ActionListener {
                     String playerName = parts[0];
                     int playerScore = Integer.parseInt(parts[1]);
                     playerScores.put(playerName, playerScore);
+                    
+                    // Check if any player has reached 500 points to win the game
+                    if (playerScore >= 500) {
+                        handlePlayerWin(playerName);
+                    }
                 }
             } else if (message.startsWith("PLAYER_LIST:")) {
                 // Handle player list message to create other players
@@ -811,7 +716,9 @@ class GamePanel extends JPanel implements ActionListener {
                             // Create other players with different colors
                             Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
                             Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                            Player otherPlayer = new Player(300, 359, playerColor); // Default position
+                            // Get the character type for this player if available
+                            String playerCharacterType = playerCharacters.getOrDefault(player, "male");
+                            Player otherPlayer = new Player(300, 359, playerColor, playerCharacterType); // Default position
                             otherPlayers.put(player, otherPlayer);
                             playerScores.put(player, 0); // Initialize score
                         }
@@ -826,7 +733,9 @@ class GamePanel extends JPanel implements ActionListener {
                         // Create other players with different colors
                         Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
                         Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                        Player otherPlayer = new Player(300, 359, playerColor); // Default position
+                        // Get the character type for this player if available
+                        String playerCharacterType = playerCharacters.getOrDefault(newPlayerName, "male");
+                        Player otherPlayer = new Player(300, 359, playerColor, playerCharacterType); // Default position
                         otherPlayers.put(newPlayerName, otherPlayer);
                         playerScores.put(newPlayerName, 0); // Initialize score
                         
@@ -843,6 +752,11 @@ class GamePanel extends JPanel implements ActionListener {
                     otherPlayers.remove(leftPlayerName);
                     playerScores.remove(leftPlayerName);
                 }
+            } else if (message.startsWith("PLAYER_WIN:")) {
+                // Handle when a player wins the game
+                String winnerName = message.substring("PLAYER_WIN:".length());
+                this.winnerName = winnerName; // Store the winner's name for MVP display
+                handlePlayerWin(winnerName);
             } else if (message.startsWith("PLAYER_CHARACTER:")) {
                 // Handle when a player selects a character
                 String[] parts = message.substring("PLAYER_CHARACTER:".length()).split(":");
@@ -867,32 +781,29 @@ class GamePanel extends JPanel implements ActionListener {
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
-                isHostPlayer = false; // When game starts, this client is not the host
-                // Send current player position to other players
+                isHostPlayer = false;
+
                 if (isMultiplayer && gameClient != null) {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
                 }
             } else if (message.startsWith("PLAYER_DIED:")) {
-                // When another player dies, mark them as dead
+
                 String deadPlayer = message.substring("PLAYER_DIED:".length());
                 if (!deadPlayer.equals(playerName)) { // Don't process our own death message
                     playerScores.put(deadPlayer, -1); // Mark as dead with special score
                 }
                 
-                // Check if all players are now dead and update display
+
                 if (areAllPlayersDead()) {
                     allPlayersDead = true;
                 }
                 repaint();
                 
-                // In multiplayer mode, no restart functionality
-                // Players need to return to main menu to play again
+
             } else if (message.startsWith("GAME_RESTART")) {
-                // Restart functionality disabled in multiplayer mode
-                // Players should return to main menu to play again
+
             } else if (message.startsWith("HOST_RESTART")) {
-                // Restart functionality disabled in multiplayer mode
-                // Players should return to main menu to play again
+
             }
         } catch (NumberFormatException e) {
             System.err.println("Error parsing network message: " + e.getMessage());
@@ -900,8 +811,6 @@ class GamePanel extends JPanel implements ActionListener {
             System.err.println("Unexpected error handling network message: " + e.getMessage());
         }
     }
-
-
 
     public void setAsHost() {
         this.isHostPlayer = true;
@@ -916,8 +825,23 @@ class GamePanel extends JPanel implements ActionListener {
         return isHostPlayer;
     }
     
+    /** Find the player who has won (reached 500 points) */
+    private String findWinner() {
 
-    
+        if (score >= 500) {
+            return playerName;
+        }
+        
+        // Check other players' scores
+        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            if (entry.getValue() != null && entry.getValue() >= 500) {
+                return entry.getKey();
+            }
+        }
+        
+        return null;
+    }
+
 }
 
 /** คลาสผู้เล่น */
@@ -928,8 +852,8 @@ class Player {
     Color playerColor = Color.CYAN; // สีของผู้เล่น (สำหรับผู้เล่นอื่น)
     boolean isMainPlayer = false; // ตัวแปรเพื่อแยกผู้เล่นหลักกับผู้เล่นอื่น
     String characterType = "male"; // Character type: "male" or "female"
-    
-    // โหลดรูปผู้เล่น
+
+
     static ImageIcon playerIcon;
     static ImageIcon femaleIcon;
     static Image playerImage;
@@ -951,7 +875,7 @@ class Player {
             
             femaleIcon = new ImageIcon(
                 System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                        + File.separator + "game" + File.separator + "Chgirl.png");
+                        + File.separator + "game" + File.separator + "player2.png");
             femaleImage = femaleIcon.getImage();
         } catch (Exception e) {
             System.err.println("Failed to load player images: " + e.getMessage());
@@ -994,7 +918,7 @@ class Player {
     void draw(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         
-        // If images failed to load, draw a colored rectangle instead
+
         Image imageToDraw = null;
         if ("female".equals(characterType) && femaleImage != null) {
             imageToDraw = femaleImage;
@@ -1105,8 +1029,6 @@ class Zombie {
     void draw(Graphics g) {
         // วาดรูปซอมบี้
         g.drawImage(zombieImage, x, y, size, 75, null);
-
-        // แถบ HP
         g.setColor(Color.RED);
         g.fillRect(x, y - 10, size, 5);
         g.setColor(Color.GREEN);

@@ -107,6 +107,10 @@ public class ClientHandler implements Runnable {
             // Restart functionality disabled in multiplayer mode
             // Players should return to main menu to play again
         }
+        else if (message.startsWith("PLAYER_WIN:")) {
+            String winner = message.substring("PLAYER_WIN:".length());
+            server.broadcast("PLAYER_WIN:" + winner);
+        }
     }
 
     public void sendMessage(String message) {

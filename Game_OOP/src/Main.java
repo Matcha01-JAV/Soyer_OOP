@@ -53,8 +53,8 @@ class MainPanel extends JPanel {
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "Chgirl.png");
 
-    // Store selected character type
-    public static String selectedCharacter = "male"; // default to male
+
+    public static String selectedCharacter = "male";
 
     // ปุ่มหน้าแรก
     private final JButton start = new JButton(startIcon);
@@ -177,7 +177,6 @@ class MainPanel extends JPanel {
             gameFrame.setVisible(true);
             gameCharacterBtn.addActionListener(et -> {
                 StopBugmain = true;
-
                 if (mainFrame != null) {
                     mainFrame.dispose();
                 }
@@ -185,7 +184,6 @@ class MainPanel extends JPanel {
                     characterFrame.toFront();
                     return;
                 }
-
                 characterFrame = new JFrame("Character Selection");
                 characterFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 characterFrame.setSize(1248, 850);
@@ -212,6 +210,7 @@ class MainPanel extends JPanel {
                 soyerMaleName.setBounds(300 - 10, 300 + soyerMaleIcon.getIconHeight() + 10, soyerMaleIcon.getIconWidth() + 20, 30);
                 bgLabel.add(soyerMaleName);
 
+
                 JButton selectSoyerBtn = new JButton("Select Soyer");
                 selectSoyerBtn.setFont(new Font("Arial", Font.BOLD, 18));
                 selectSoyerBtn.setBackground(new Color(76, 175, 80));
@@ -223,15 +222,13 @@ class MainPanel extends JPanel {
                     if (characterFrame != null)
                     {
                         characterFrame.dispose();
-
                         characterFrame = null;
-
                      }
                     if (gameFrame != null)
                     {
                         gameFrame.setVisible(true);
                     }
-                    ImageIcon player1 = new ImageIcon(
+                    ImageIcon male = new ImageIcon(
                             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                                     + File.separator + "game" + File.separator + "player1.png");
 
@@ -281,7 +278,7 @@ class MainPanel extends JPanel {
                     {
                         gameFrame.setVisible(true);
                     }
-                    ImageIcon player2 = new ImageIcon(
+                    ImageIcon girl = new ImageIcon(
                             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                                     + File.separator + "game" + File.separator + "player2.png");
                 });
