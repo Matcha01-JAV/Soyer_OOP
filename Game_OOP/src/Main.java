@@ -53,6 +53,9 @@ class MainPanel extends JPanel {
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "Chgirl.png");
 
+    // Store selected character type
+    public static String selectedCharacter = "male"; // default to male
+
     // ปุ่มหน้าแรก
     private final JButton start = new JButton(startIcon);
     private final JButton character = new JButton(characterIcon);
@@ -193,74 +196,110 @@ class MainPanel extends JPanel {
                 bgLabel.setLayout(null); // Use absolute positioning for better control
                 characterFrame.setContentPane(bgLabel);
 
-                // Load and add soyer1.png character image
-                ImageIcon soyerIcon = new ImageIcon(
+                ImageIcon soyerMaleIcon = new ImageIcon(
                         System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                                 + File.separator + "game" + File.separator + "soyer1.png");
 
-                JLabel soyerLabel = new JLabel(soyerIcon);
-                soyerLabel.setBounds(530, 300, soyerIcon.getIconWidth(), soyerIcon.getIconHeight());
-                bgLabel.add(soyerLabel);
+                JLabel soyerMaleLabel = new JLabel(soyerMaleIcon);
+                soyerMaleLabel.setBounds(300, 300, soyerMaleIcon.getIconWidth(), soyerMaleIcon.getIconHeight());
+                bgLabel.add(soyerMaleLabel);
 
-                // Add character name with background
-                JLabel soyerNameLabel = new JLabel("Soyer", JLabel.CENTER);
-                soyerNameLabel.setFont(new Font("Arial", Font.BOLD, 24));
-                soyerNameLabel.setForeground(Color.WHITE);
-                soyerNameLabel.setOpaque(true);
-                soyerNameLabel.setBackground(new Color(0, 0, 0, 150)); // Semi-transparent background
-                soyerNameLabel.setBounds(530, 300 + soyerIcon.getIconHeight() + 10, soyerIcon.getIconWidth(), 30);
-                bgLabel.add(soyerNameLabel);
+                JLabel soyerMaleName = new JLabel("Soyer (Male)", JLabel.CENTER);
+                soyerMaleName.setFont(new Font("Arial", Font.BOLD, 20));
+                soyerMaleName.setForeground(Color.WHITE);
+                soyerMaleName.setOpaque(true);
+                soyerMaleName.setBackground(new Color(0, 0, 0, 150));
+                soyerMaleName.setBounds(300 - 10, 300 + soyerMaleIcon.getIconHeight() + 10, soyerMaleIcon.getIconWidth() + 20, 30);
+                bgLabel.add(soyerMaleName);
 
-                // Add select button for the character
                 JButton selectSoyerBtn = new JButton("Select Soyer");
                 selectSoyerBtn.setFont(new Font("Arial", Font.BOLD, 18));
                 selectSoyerBtn.setBackground(new Color(76, 175, 80));
                 selectSoyerBtn.setForeground(Color.WHITE);
                 selectSoyerBtn.setFocusPainted(false);
-                selectSoyerBtn.setBounds(530 + (soyerIcon.getIconWidth() - 150) / 2,
-                        300 + soyerIcon.getIconHeight() + 50, 150, 40);
+                selectSoyerBtn.setBounds(300 + (soyerMaleIcon.getIconWidth() - 150) / 2, 300 + soyerMaleIcon.getIconHeight() + 50, 150, 40);
+                selectSoyerBtn.addActionListener(ev -> {
+                    MainPanel.selectedCharacter = "male";
+                    if (characterFrame != null)
+                    {
+                        characterFrame.dispose();
 
-                selectSoyerBtn.addActionListener(selectEvent -> {
-                    // Character selected, close character selection and return to game
-                    characterFrame.dispose();
-                    characterFrame = null;
-                    if (gameFrame != null) {
+                        characterFrame = null;
+
+                     }
+                    if (gameFrame != null)
+                    {
                         gameFrame.setVisible(true);
                     }
-                });
+                    ImageIcon player1 = new ImageIcon(
+                            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                                    + File.separator + "game" + File.separator + "player1.png");
 
-                // Add hover effect
+                });
                 selectSoyerBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override
-                    public void mouseEntered(java.awt.event.MouseEvent e) {
+                    @Override public void mouseEntered(java.awt.event.MouseEvent e) {
                         selectSoyerBtn.setBackground(new Color(102, 187, 106));
+                        selectSoyerBtn.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
                     }
-
-                    @Override
-                    public void mouseExited(java.awt.event.MouseEvent e) {
+                    @Override public void mouseExited(java.awt.event.MouseEvent e) {
                         selectSoyerBtn.setBackground(new Color(76, 175, 80));
+                        selectSoyerBtn.setBorder(BorderFactory.createEmptyBorder());
                     }
                 });
-
                 bgLabel.add(selectSoyerBtn);
 
-                // Add back button
-                JButton backButton = new JButton("← Back");
-                backButton.setFont(new Font("Arial", Font.BOLD, 18));
-                backButton.setForeground(Color.WHITE);
-                backButton.setBackground(new Color(244, 67, 54));
-                backButton.setFocusPainted(false);
-                backButton.setBounds(50, 50, 100, 40);
+                ImageIcon soyerFemaleIcon = new ImageIcon(
+                        System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                                + File.separator + "game" + File.separator + "soyer2.png");
 
-                backButton.addActionListener(backEvent -> {
-                    characterFrame.dispose();
-                    characterFrame = null;
-                    if (gameFrame != null) {
+                JLabel soyerFemaleLabel = new JLabel(soyerFemaleIcon);
+                soyerFemaleLabel.setBounds(800, 300, soyerFemaleIcon.getIconWidth(), soyerFemaleIcon.getIconHeight());
+                bgLabel.add(soyerFemaleLabel);
+
+                JLabel soyerFemaleName = new JLabel("Soyer(Female)", JLabel.CENTER);
+                soyerFemaleName.setFont(new Font("Arial", Font.BOLD, 20));
+                soyerFemaleName.setForeground(Color.WHITE);
+                soyerFemaleName.setOpaque(true);
+                soyerFemaleName.setBackground(new Color(0, 0, 0, 150));
+                soyerFemaleName.setBounds(800 - 10, 300 + soyerFemaleIcon.getIconHeight() + 10, soyerFemaleIcon.getIconWidth() + 20, 30);
+                bgLabel.add(soyerFemaleName);
+
+                JButton selectSoyerGBtn = new JButton("Select Soyer");
+                selectSoyerGBtn.setFont(new Font("Arial", Font.BOLD, 18));
+                selectSoyerGBtn.setBackground(new Color(76, 175, 80));
+                selectSoyerGBtn.setForeground(Color.WHITE);
+                selectSoyerGBtn.setFocusPainted(false);
+                selectSoyerGBtn.setBounds(800 + (soyerFemaleIcon.getIconWidth() - 150) / 2, 300 + soyerFemaleIcon.getIconHeight() + 50, 150, 40);
+                selectSoyerGBtn.addActionListener(ev -> {
+                    MainPanel.selectedCharacter = "female";
+                    if (characterFrame != null)
+                    {
+                        characterFrame.dispose();
+                        characterFrame = null;
+                    }
+                    if (gameFrame != null)
+                    {
                         gameFrame.setVisible(true);
                     }
+                    ImageIcon player2 = new ImageIcon(
+                            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                                    + File.separator + "game" + File.separator + "player2.png");
                 });
+                selectSoyerGBtn.addMouseListener(new java.awt.event.MouseAdapter() {
+                    @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                        selectSoyerGBtn.setBackground(new Color(102, 187, 106));
+                        selectSoyerGBtn.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+                    }
+                    @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                        selectSoyerGBtn.setBackground(new Color(76, 175, 80));
+                        selectSoyerGBtn.setBorder(BorderFactory.createEmptyBorder());
+                    }
+                });
+                bgLabel.add(selectSoyerGBtn);
 
-                bgLabel.add(backButton);
+                JButton backBtnC = createBackButton(characterFrame, gameFrame);
+                bgLabel.add(backBtnC);
+
                 characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosed(java.awt.event.WindowEvent windowEvent) {
@@ -502,8 +541,7 @@ class MainPanel extends JPanel {
 
                         startGameBtn.addActionListener(ed -> {
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
-                            if (serverVar != null)
-                                serverVar.startGame();
+                            if (serverVar != null) serverVar.startGame();
                             lobby.dispose();
 
                             // Create a GameClient for the host to participate in the multiplayer game
@@ -515,7 +553,7 @@ class MainPanel extends JPanel {
                             // Connect the host client to its own server
                             SwingUtilities.invokeLater(() -> {
                                 if (hostClient.connect("localhost", port)) {
-                                    GameFrame frame = new GameFrame(playerName, hostClient);
+                                    GameFrame frame = new GameFrame(playerName, hostClient, MainPanel.selectedCharacter);
                                     // Set up message forwarding to the game panel
                                     hostClient.setMessageListener(msg -> {
                                         GamePanel panel = frame.getGamePanel();
@@ -530,7 +568,7 @@ class MainPanel extends JPanel {
                                     }
                                 } else {
                                     // Fallback to solo mode if connection fails
-                                    new GameFrame(playerName);
+                                    new GameFrame(playerName, MainPanel.selectedCharacter);
                                 }
                             });
                         });
@@ -554,6 +592,7 @@ class MainPanel extends JPanel {
                             }
                         });
                         poll.start();
+
 
                         lobby.addWindowListener(new java.awt.event.WindowAdapter() {
                             @Override
@@ -676,7 +715,7 @@ class MainPanel extends JPanel {
                                 } else if (message.startsWith("GAME_START")) {
                                     joinFrame.dispose();
                                     SwingUtilities.invokeLater(() -> {
-                                        GameFrame frame = new GameFrame(selfName, clientHolder[0]);
+                                        GameFrame frame = new GameFrame(selfName, clientHolder[0], MainPanel.selectedCharacter);
                                         // Set up message forwarding to the game panel
                                         clientHolder[0].setMessageListener(msg -> {
                                             GamePanel panel = frame.getGamePanel();
@@ -748,7 +787,7 @@ class MainPanel extends JPanel {
 
                 soloButton.addActionListener(ev3 -> {
                     playFrame.dispose();
-                    SwingUtilities.invokeLater(() -> new GameFrame(playerName));
+                    SwingUtilities.invokeLater(() -> new GameFrame(playerName, MainPanel.selectedCharacter));
                 });
             });
         });

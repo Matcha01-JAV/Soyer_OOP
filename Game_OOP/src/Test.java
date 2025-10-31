@@ -33,12 +33,14 @@ class GamePanel extends JPanel implements ActionListener {
 
     // ชื่อผู้เล่นที่รับมาจากฝั่ง Main
     String playerName;
+    String characterType = "male"; // Character type: "male" or "female"
     
     // Multiplayer support
     boolean isMultiplayer = false;
     GameClient gameClient = null;
     Map<String, Player> otherPlayers = new java.util.concurrent.ConcurrentHashMap<>();
     Map<String, Integer> playerScores = new java.util.concurrent.ConcurrentHashMap<>(); // Track scores for each player
+    Map<String, String> playerCharacters = new java.util.concurrent.ConcurrentHashMap<>(); // Track character types for each player
     boolean isHostPlayer = false; // Track if this player is the host
     boolean allPlayersDead = false; // Track if all players are dead
     JButton nextButton = null; // Button for host to restart when all players are dead
@@ -70,7 +72,13 @@ class GamePanel extends JPanel implements ActionListener {
 
     // คอนสตรัคเตอร์หลัก: รับชื่อแล้วเก็บไว้
     GamePanel(String name) {
+        this(name, "male"); // default to male character
+    }
+    
+    // Constructor with character selection
+    GamePanel(String name, String characterType) {
         this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
+        this.characterType = characterType != null ? characterType : "male";
         this.isMultiplayer = false;
         this.isHostPlayer = true; // Solo player is always the host
         initializeGame();
@@ -78,7 +86,13 @@ class GamePanel extends JPanel implements ActionListener {
     
     // Constructor for multiplayer game
     GamePanel(String name, GameClient client) {
+        this(name, client, "male"); // default to male character
+    }
+    
+    // Constructor for multiplayer game with character selection
+    GamePanel(String name, GameClient client, String characterType) {
         this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
+        this.characterType = characterType != null ? characterType : "male";
         this.gameClient = client;
         this.isMultiplayer = true;
         this.isHostPlayer = false; // Clients are not hosts by default
@@ -91,12 +105,13 @@ class GamePanel extends JPanel implements ActionListener {
         setFocusable(true);
 
         // สร้างผู้เล่น/ลิสต์
-        player = new Player(300, 359); // Start in the middle of the road (359 is approximately center of road)
+        player = new Player(300, 359, characterType); // Start in the middle of the road (359 is approximately center of road)
         zombies = new ArrayList<>();
         bullets = new ArrayList<>();
         
-        // Initialize player scores
+        // Initialize player scores and characters
         playerScores.put(playerName, 0);
+        playerCharacters.put(playerName, characterType);
 
         // ยิงกระสุนทุก 0.5 วินาที
         shootTimer = new javax.swing.Timer(500, e -> shoot());
@@ -153,6 +168,8 @@ class GamePanel extends JPanel implements ActionListener {
                 long currentTime = System.currentTimeMillis();
                 if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 50)) {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+                    // Also send character type
+                    gameClient.sendMessage("PLAYER_CHARACTER:" + playerName + ":" + characterType);
                     lastPositionUpdate = currentTime;
                 }
             }
@@ -175,6 +192,8 @@ class GamePanel extends JPanel implements ActionListener {
                 long currentTime = System.currentTimeMillis();
                 if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 50)) {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+                    // Also send character type
+                    gameClient.sendMessage("PLAYER_CHARACTER:" + playerName + ":" + characterType);
                     lastPositionUpdate = currentTime;
                 }
             }
@@ -183,8 +202,9 @@ class GamePanel extends JPanel implements ActionListener {
         // Set up network message listener for multiplayer mode
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("PLAYER_READY:" + playerName);
-            // Send initial position to synchronize with other players
+            // Send initial position and character to synchronize with other players
             gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+            gameClient.sendMessage("PLAYER_CHARACTER:" + playerName + ":" + characterType);
         }
     }
 
@@ -823,6 +843,27 @@ class GamePanel extends JPanel implements ActionListener {
                     otherPlayers.remove(leftPlayerName);
                     playerScores.remove(leftPlayerName);
                 }
+            } else if (message.startsWith("PLAYER_CHARACTER:")) {
+                // Handle when a player selects a character
+                String[] parts = message.substring("PLAYER_CHARACTER:".length()).split(":");
+                if (parts.length >= 2) {
+                    String playerName = parts[0];
+                    String characterType = parts[1];
+                    
+                    // Update or create player with character type
+                    Player otherPlayer = otherPlayers.get(playerName);
+                    if (otherPlayer == null) {
+                        // Create other players with different colors
+                        Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                        Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                        otherPlayer = new Player(300, 359, playerColor, characterType);
+                        otherPlayers.put(playerName, otherPlayer);
+                        playerScores.put(playerName, 0); // Initialize score for new player
+                    } else {
+                        // Update character type
+                        otherPlayer.characterType = characterType;
+                    }
+                }
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
@@ -886,10 +927,13 @@ class Player {
     double speed = 1.5; // ลดความเร็วลงเพื่อให้เคลื่อนไหวนุ่มนวลขึ้น
     Color playerColor = Color.CYAN; // สีของผู้เล่น (สำหรับผู้เล่นอื่น)
     boolean isMainPlayer = false; // ตัวแปรเพื่อแยกผู้เล่นหลักกับผู้เล่นอื่น
+    String characterType = "male"; // Character type: "male" or "female"
     
     // โหลดรูปผู้เล่น
     static ImageIcon playerIcon;
+    static ImageIcon femaleIcon;
     static Image playerImage;
+    static Image femaleImage;
     
     // ตัวแปรสำหรับการเคลื่อนไหวแบบต่อเนื่อง
     boolean movingUp = false;
@@ -904,10 +948,16 @@ class Player {
                 System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                         + File.separator + "game" + File.separator + "player1.png");
             playerImage = playerIcon.getImage();
+            
+            femaleIcon = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "Chgirl.png");
+            femaleImage = femaleIcon.getImage();
         } catch (Exception e) {
-            System.err.println("Failed to load player image: " + e.getMessage());
+            System.err.println("Failed to load player images: " + e.getMessage());
             // Create a default image if loading fails
             playerImage = null;
+            femaleImage = null;
         }
     }
 
@@ -915,6 +965,7 @@ class Player {
         this.x = x;
         this.y = y;
         this.isMainPlayer = true; // ผู้เล่นหลักใช้รูป player1.png
+        this.characterType = "male"; // default to male
     }
     
     Player(int x, int y, Color color) {
@@ -922,13 +973,36 @@ class Player {
         this.y = y;
         this.playerColor = color;
         this.isMainPlayer = true; // เปลี่ยนให้ผู้เล่นอื่นใช้รูปเหมือนกัน
+        this.characterType = "male"; // default to male
+    }
+    
+    Player(int x, int y, String characterType) {
+        this.x = x;
+        this.y = y;
+        this.isMainPlayer = true;
+        this.characterType = characterType != null ? characterType : "male";
+    }
+    
+    Player(int x, int y, Color color, String characterType) {
+        this.x = x;
+        this.y = y;
+        this.playerColor = color;
+        this.isMainPlayer = true;
+        this.characterType = characterType != null ? characterType : "male";
     }
 
     void draw(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         
-        // If image failed to load, draw a colored rectangle instead
-        if (playerImage == null) {
+        // If images failed to load, draw a colored rectangle instead
+        Image imageToDraw = null;
+        if ("female".equals(characterType) && femaleImage != null) {
+            imageToDraw = femaleImage;
+        } else if (playerImage != null) {
+            imageToDraw = playerImage;
+        }
+        
+        if (imageToDraw == null) {
             g.setColor(playerColor);
             g.fillRect((int)x, (int)y, size, 75);
             return;
@@ -936,10 +1010,10 @@ class Player {
         
         if (playerColor == Color.CYAN) {
             // Main player - draw normal image
-            g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
+            g.drawImage(imageToDraw, (int)x, (int)y, size, 75, null);
         } else {
             // Other players - draw image with color tint
-            g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
+            g.drawImage(imageToDraw, (int)x, (int)y, size, 75, null);
             
             // Add colored overlay to distinguish players
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
