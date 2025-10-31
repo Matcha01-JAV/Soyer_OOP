@@ -169,13 +169,13 @@ public class GameServer {
         client.sendMessage(playerListMsg.toString());
     }
 
+
     /**
      * Update player state
      */
     public void updatePlayerState(String playerName, PlayerState state) {
         playerStates.put(playerName, state);
-        // Broadcast player state to all clients
-        broadcast("PLAYER_STATE:" + playerName + ":" + state.toString());
+        broadcast("STATE|" + playerName + "|" + state.toString());
     }
 
     /**

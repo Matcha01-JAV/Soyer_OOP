@@ -33,17 +33,23 @@ public class PlayerState {
      */
     public static PlayerState fromString(String stateStr) {
         try {
+            // ตัด prefix ที่อาจติดมารูปแบบ name:payload ออก (กันเคส "dwa:0,100,5,1")
+            int firstColon = stateStr.indexOf(':');
+            if (firstColon != -1 && stateStr.substring(firstColon + 1).contains(",")) {
+                stateStr = stateStr.substring(firstColon + 1);
+            }
+
             String[] parts = stateStr.split(",");
             if (parts.length >= 4) {
-                int x = Integer.parseInt(parts[0]);
-                int y = Integer.parseInt(parts[1]);
-                int score = Integer.parseInt(parts[2]);
-                boolean isAlive = "1".equals(parts[3]) || Boolean.parseBoolean(parts[3]);
+                int x = Integer.parseInt(parts[0].trim());
+                int y = Integer.parseInt(parts[1].trim());
+                int score = Integer.parseInt(parts[2].trim());
+                boolean isAlive = "1".equals(parts[3].trim()) || Boolean.parseBoolean(parts[3].trim());
                 return new PlayerState(x, y, score, isAlive);
             }
-        } catch (NumberFormatException e) {
-            System.err.println("Error parsing player state: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error parsing player state: '" + stateStr + "' -> " + e);
         }
-        return new PlayerState();
+        return new PlayerState(); // fallback ปลอดภัย
     }
 }

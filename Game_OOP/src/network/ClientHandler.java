@@ -53,11 +53,10 @@ public class ClientHandler implements Runnable {
      */
     private void handleMessage(String message) {
         if (playerName == null) return;
-        
-        if (message.startsWith("PLAYER_STATE:"))
-        {
-            String stateData = message.substring("PLAYER_STATE:".length());
-            network.PlayerState st = network.PlayerState.fromString(stateData);
+
+        if (message.startsWith("PLAYER_STATE|")) {
+            String stateData = message.substring("PLAYER_STATE|".length());
+            PlayerState st = PlayerState.fromString(stateData);
             server.updatePlayerState(playerName, st);
         } else if (message.startsWith("START_GAME:"))
         {

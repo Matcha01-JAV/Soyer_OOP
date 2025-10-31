@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -366,7 +367,7 @@ class GamePanel extends JPanel implements ActionListener {
     
     /** วาดชื่อผู้เล่นอื่นให้อยู่เหนือหัว */
     private void drawPlayerName(Graphics2D g2, Player player, String name) {
-        if (player == null || name == null) return;
+        if (player == null || name == null || name.isEmpty()) return;
 
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         Font font = new Font("Tahoma", Font.BOLD, 18);
@@ -574,10 +575,17 @@ class GamePanel extends JPanel implements ActionListener {
         }
         
         // In multiplayer mode, check if all players are marked as dead (-1)
+        // Also check if player is actually in the game (not just in scores map)
         for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-            // If any player is not marked as dead (-1), return false
-            if (entry.getValue() != -1) {
-                return false;
+            String playerName = entry.getKey();
+            Integer score = entry.getValue();
+            
+            // Check if player is still in the game and not marked as dead
+            if (score != null && score != -1) {
+                // Check if this player is still connected
+                if (otherPlayers.containsKey(playerName) || playerName.equals(this.playerName)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -597,9 +605,17 @@ class GamePanel extends JPanel implements ActionListener {
         player.movingLeft = false;
         player.movingRight = false;
         
-        // Clear other players' scores but keep them in the game
-        for (String playerName : playerScores.keySet()) {
+        // Reset player scores for all players
+        // In multiplayer, we need to keep other players in the game
+        if (!isMultiplayer) {
+            // In solo mode, clear all scores
+            playerScores.clear();
             playerScores.put(playerName, 0);
+        } else {
+            // In multiplayer mode, reset scores but keep players
+            for (String playerName : playerScores.keySet()) {
+                playerScores.put(playerName, 0);
+            }
         }
         
         // Remove the next button if it exists
@@ -639,15 +655,19 @@ class GamePanel extends JPanel implements ActionListener {
                         // Update or create player
                         Player otherPlayer = otherPlayers.get(playerName);
                         if (otherPlayer == null) {
-                            // Create other players with different colors
-                            Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
-                            Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                            otherPlayer = new Player(x, y, playerColor);
-                            otherPlayers.put(playerName, otherPlayer);
-                            playerScores.put(playerName, 0); // Initialize score for new player
-                            // Send current player position to the new player
-                            if (isMultiplayer && gameClient != null) {
-                                gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + player.x + "," + player.y);
+                            // Don't create player if it's ourselves
+                            if (!playerName.equals(this.playerName)) {
+                                // Create other players with different colors
+                                Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                                Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                                otherPlayer = new Player(x, y, playerColor);
+                                otherPlayers.put(playerName, otherPlayer);
+                                playerScores.put(playerName, 0); // Initialize score for new player
+                                System.out.println("Created player: " + playerName + " at (" + x + ", " + y + ")");
+                                // Send current player position to the new player
+                                if (isMultiplayer && gameClient != null) {
+                                    gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + (int)player.x + "," + (int)player.y);
+                                }
                             }
                         } else {
                             // Improved position interpolation to prevent stuttering
@@ -670,37 +690,20 @@ class GamePanel extends JPanel implements ActionListener {
                         }
                     }
                 }
-            }  else if (message.startsWith("PLAYER_STATE:")) {
-                // รูปแบบ: PLAYER_STATE:ชื่อผู้เล่น:x,y,score,isAlive
-                String messageContent = message.substring("PLAYER_STATE:".length());
-                int firstColon = messageContent.indexOf(':');
-                if (firstColon > 0) {
-                    String otherName = messageContent.substring(0, firstColon);
-                    String stateData = messageContent.substring(firstColon + 1);
-                    // ข้ามตัวเอง
-                    if (!otherName.equals(playerName)) {
-                        String[] fields = stateData.split(",");
-                        if (fields.length >= 4) {
-                            int x = Integer.parseInt(fields[0]);
-                            int y = Integer.parseInt(fields[1]);
-                            int sc = Integer.parseInt(fields[2]);
-                            // รองรับทั้ง "1/0" และ "true/false"
-                            boolean alive = "1".equals(fields[3]) || Boolean.parseBoolean(fields[3]);
-
-                            Player op = otherPlayers.get(otherName);
-                            if (op == null) {
-                                // Create other players with different colors
-                                Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
-                                Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                                op = new Player(x, y, playerColor);
-                                otherPlayers.put(otherName, op);
-                            } else {
-                                // Don't update position here - use PLAYER_POSITION messages only
-                                // This prevents conflicting position updates that cause stuttering
-                            }
-                            // เก็บคะแนน/สถานะอื่น ๆ
-                            playerScores.put(otherName, sc);
-                            // ถ้าจะใช้ alive ในอนาคต สามารถเก็บลง map แยกได้
+            }  else if (message.startsWith("STATE|")) {
+                String[] parts = message.split("\\|", 3);
+                if (parts.length == 3) {
+                    String name = parts[1];
+                    PlayerState st = PlayerState.fromString(parts[2]);
+                    if (!name.equals(playerName)) {
+                        // อัปเดตตำแหน่งของผู้เล่นอื่น
+                        Player other = otherPlayers.get(name);
+                        if (other == null) {
+                            other = new Player(st.x, st.y, Color.CYAN);
+                            otherPlayers.put(name, other);
+                        } else {
+                            other.x = st.x;
+                            other.y = st.y;
                         }
                     }
                 }
@@ -778,6 +781,48 @@ class GamePanel extends JPanel implements ActionListener {
                     int playerScore = Integer.parseInt(parts[1]);
                     playerScores.put(playerName, playerScore);
                 }
+            } else if (message.startsWith("PLAYER_LIST:")) {
+                // Handle player list message to create other players
+                String[] players = message.substring("PLAYER_LIST:".length()).split(",");
+                for (String player : players) {
+                    if (!player.isEmpty() && !player.equals(this.playerName)) {
+                        // Create player if not already exists
+                        if (!otherPlayers.containsKey(player) && !playerScores.containsKey(player)) {
+                            // Create other players with different colors
+                            Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                            Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                            Player otherPlayer = new Player(300, 359, playerColor); // Default position
+                            otherPlayers.put(player, otherPlayer);
+                            playerScores.put(player, 0); // Initialize score
+                        }
+                    }
+                }
+            } else if (message.startsWith("PLAYER_JOINED:")) {
+                // Handle when a new player joins the game
+                String newPlayerName = message.substring("PLAYER_JOINED:".length());
+                if (!newPlayerName.isEmpty() && !newPlayerName.equals(this.playerName)) {
+                    // Create player if not already exists
+                    if (!otherPlayers.containsKey(newPlayerName) && !playerScores.containsKey(newPlayerName)) {
+                        // Create other players with different colors
+                        Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
+                        Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
+                        Player otherPlayer = new Player(300, 359, playerColor); // Default position
+                        otherPlayers.put(newPlayerName, otherPlayer);
+                        playerScores.put(newPlayerName, 0); // Initialize score
+                        
+                        // Send current player position to the new player
+                        if (isMultiplayer && gameClient != null) {
+                            gameClient.sendMessage("PLAYER_POSITION:" + this.playerName + ":" + (int)player.x + "," + (int)player.y);
+                        }
+                    }
+                }
+            } else if (message.startsWith("PLAYER_LEFT:")) {
+                // Handle when a player leaves the game
+                String leftPlayerName = message.substring("PLAYER_LEFT:".length());
+                if (!leftPlayerName.isEmpty()) {
+                    otherPlayers.remove(leftPlayerName);
+                    playerScores.remove(leftPlayerName);
+                }
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
@@ -843,16 +888,28 @@ class Player {
     boolean isMainPlayer = false; // ตัวแปรเพื่อแยกผู้เล่นหลักกับผู้เล่นอื่น
     
     // โหลดรูปผู้เล่น
-    static ImageIcon playerIcon = new ImageIcon(
-            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "player1.png");
-    static Image playerImage = playerIcon.getImage();
+    static ImageIcon playerIcon;
+    static Image playerImage;
     
     // ตัวแปรสำหรับการเคลื่อนไหวแบบต่อเนื่อง
     boolean movingUp = false;
     boolean movingDown = false;
     boolean movingLeft = false;
     boolean movingRight = false;
+    
+    // Static initializer to load images safely
+    static {
+        try {
+            playerIcon = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "player1.png");
+            playerImage = playerIcon.getImage();
+        } catch (Exception e) {
+            System.err.println("Failed to load player image: " + e.getMessage());
+            // Create a default image if loading fails
+            playerImage = null;
+        }
+    }
 
     Player(int x, int y) {
         this.x = x;
@@ -870,12 +927,18 @@ class Player {
     void draw(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         
+        // If image failed to load, draw a colored rectangle instead
+        if (playerImage == null) {
+            g.setColor(playerColor);
+            g.fillRect((int)x, (int)y, size, 75);
+            return;
+        }
+        
         if (playerColor == Color.CYAN) {
             // Main player - draw normal image
             g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
         } else {
             // Other players - draw image with color tint
-            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
             g.drawImage(playerImage, (int)x, (int)y, size, 75, null);
             
             // Add colored overlay to distinguish players

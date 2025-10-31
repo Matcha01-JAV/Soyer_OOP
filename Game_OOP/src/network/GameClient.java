@@ -23,7 +23,12 @@ public class GameClient {
         this.messageListener = listener;
         this.listenerThread = Executors.newSingleThreadExecutor();
     }
-    
+
+    public void sendPlayerState(PlayerState st) {
+        if (!isConnected || output == null) return;
+        output.println("PLAYER_STATE|" + st.toString());
+        output.flush();
+    }
     /**
      * Connect to the game server
      */
@@ -69,6 +74,7 @@ public class GameClient {
             disconnect();
         }
     }
+
     
     /**
      * Send message to the server

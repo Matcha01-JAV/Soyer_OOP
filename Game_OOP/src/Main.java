@@ -49,6 +49,9 @@ class MainPanel extends JPanel {
     private final ImageIcon soloIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "solo.png");
+    private final ImageIcon chgril = new ImageIcon(
+            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                    + File.separator + "game" + File.separator + "Chgirl.png");
 
     // ปุ่มหน้าแรก
     private final JButton start = new JButton(startIcon);
