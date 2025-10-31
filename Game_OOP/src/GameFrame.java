@@ -52,6 +52,16 @@ public class GameFrame extends JFrame {
     private void commonInit() {
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // ปิดทั้งแอปเมื่อปิดหน้าต่าง
         setResizable(false);
+        
+        // Add window listener to cleanup threads when window is closed
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                if (gamePanel != null) {
+                    gamePanel.cleanup();
+                }
+            }
+        });
     }
 
     /** เก็บขั้นตอนท้าย ๆ ให้สั้น */

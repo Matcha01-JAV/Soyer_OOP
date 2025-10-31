@@ -11,7 +11,7 @@ import java.util.HashMap;
 
 import network.*;  // Add network package import
 
-class GamePanel extends JPanel implements ActionListener {
+class GamePanel extends JPanel {
 
     static final int WIDTH = 1262;
     static final int HEIGHT = 768;
@@ -36,11 +36,19 @@ class GamePanel extends JPanel implements ActionListener {
                     + File.separator + "game" + File.separator + "game_map.png");
     Image bg = bgIcon.getImage();
 
-    // ตัวจับเวลาเกม
-    javax.swing.Timer gameTimer;
-    javax.swing.Timer shootTimer;
-    javax.swing.Timer zombieTimer;
-    javax.swing.Timer syncTimer; // Timer for periodic synchronization
+    // เธรดสำหรับควบคุมเกม
+    Thread gameThread;
+    Thread shootThread;
+    Thread zombieThread;
+    Thread syncThread; // Thread for periodic synchronization
+    Thread checkThread; // Thread to check game state
+    
+    // ตัวแปรควบคุมเธรด
+    volatile boolean gameRunning = false;
+    volatile boolean shootingActive = false;
+    volatile boolean zombieSpawningActive = false;
+    volatile boolean syncActive = false;
+    volatile boolean checkActive = false;
 
     Player player;
     List<Zombie> zombies;
@@ -103,35 +111,8 @@ class GamePanel extends JPanel implements ActionListener {
         playerScores.put(playerName, 0);
         playerCharacters.put(playerName, characterType);
 
-        // ยิงกระสุนทุก 0.5 วินาที
-        shootTimer = new javax.swing.Timer(500, e -> shoot());
-        shootTimer.start();
-
-        // สุ่มสร้างซอมบี้ทุก 2 วินาที
-        zombieTimer = new javax.swing.Timer(2000, e -> spawnZombie());
-        zombieTimer.start();
-
-        // อัปเดตเกม ~60 FPS
-        gameTimer = new javax.swing.Timer(16, this);
-        gameTimer.start();
-
-        // ตัวจับเวลาสำหรับการ sync ข้อมูลทุก 100ms ในโหมด multiplayer (ลดความถี่เพื่อป้องกันการกระตุก)
-        if (isMultiplayer && gameClient != null) {
-            syncTimer = new javax.swing.Timer(100, e -> syncGameState());
-            syncTimer.start();
-            
-            // Timer to check if all players are dead (every 1 second)
-            javax.swing.Timer checkTimer = new javax.swing.Timer(1000, e -> {
-                if (gameOver && areAllPlayersDead() && !allPlayersDead) {
-                    allPlayersDead = true;
-                    // When all players are dead, stop all timers
-                    gameTimer.stop();
-                    if (syncTimer != null) syncTimer.stop();
-                    repaint();
-                }
-            });
-            checkTimer.start();
-        }
+        // เริ่มเธรดต่าง ๆ
+        startGameThreads();
 
         // การควบคุมด้วยคีย์บอร์ด
         addKeyListener(new KeyAdapter() {
@@ -216,10 +197,11 @@ class GamePanel extends JPanel implements ActionListener {
         int y = roadTopY + random.nextInt(Math.max(1, roadBottomY - roadTopY - 40));
         Zombie zombie = new Zombie(WIDTH - 50, y);
         zombies.add(zombie);
+        System.out.println("Spawned zombie: " + zombie.zombieType + " (speed: " + String.format("%.2f", zombie.speed) + ", health: " + zombie.health + ")");
         
         // In multiplayer, send zombie information to other players
         if (isMultiplayer && gameClient != null) {
-            gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y + "," + zombie.speed);
+            gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y + "," + zombie.speed + "," + zombie.zombieType);
         }
     }
 
@@ -250,6 +232,218 @@ class GamePanel extends JPanel implements ActionListener {
                         "0,0," + score + "," + !gameOver  // ใช้ 0,0 เพื่อไม่ให้มีการอัปเดตตำแหน่ง
         );
 
+    }
+
+    /** เริ่มเธรดทั้งหมด */
+    private void startGameThreads() {
+        gameRunning = true;
+        shootingActive = true;
+        zombieSpawningActive = true;
+        
+        // เธรดอัปเดตเกมหลัก (~60 FPS)
+        gameThread = new Thread(() -> {
+            while (gameRunning) {
+                try {
+                    updateGame();
+                    SwingUtilities.invokeLater(this::repaint);
+                    Thread.sleep(16); // ~60 FPS
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+        gameThread.setName("GameThread");
+        gameThread.start();
+
+        // เธรดยิงกระสุน (ทุก 0.5 วินาที)
+        shootThread = new Thread(() -> {
+            while (shootingActive) {
+                try {
+                    if (!gameOver) {
+                        shoot();
+                    }
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+        shootThread.setName("ShootThread");
+        shootThread.start();
+
+        // เธรดสร้างซอมบี้ (ทุก 2 วินาที)
+        zombieThread = new Thread(() -> {
+            while (zombieSpawningActive) {
+                try {
+                    if (!gameOver) {
+                        spawnZombie();
+                    }
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+        zombieThread.setName("ZombieThread");
+        zombieThread.start();
+
+        // เธรด sync สำหรับ multiplayer (ทุก 100ms)
+        if (isMultiplayer && gameClient != null) {
+            syncActive = true;
+            syncThread = new Thread(() -> {
+                while (syncActive) {
+                    try {
+                        syncGameState();
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            });
+            syncThread.setName("SyncThread");
+            syncThread.start();
+
+            // เธรดตรวจสอบสถานะเกม (ทุก 1 วินาที)
+            checkActive = true;
+            checkThread = new Thread(() -> {
+                while (checkActive) {
+                    try {
+                        if (gameOver && areAllPlayersDead() && !allPlayersDead) {
+                            allPlayersDead = true;
+                            stopGameThreads();
+                            SwingUtilities.invokeLater(this::repaint);
+                        }
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            });
+            checkThread.setName("CheckThread");
+            checkThread.start();
+        }
+    }
+
+    /** หยุดเธรดทั้งหมด */
+    private void stopGameThreads() {
+        gameRunning = false;
+        shootingActive = false;
+        zombieSpawningActive = false;
+        syncActive = false;
+        checkActive = false;
+
+        // รอให้เธรดทั้งหมดหยุดทำงาน
+        try {
+            if (gameThread != null && gameThread.isAlive()) {
+                gameThread.interrupt();
+                gameThread.join(1000);
+            }
+            if (shootThread != null && shootThread.isAlive()) {
+                shootThread.interrupt();
+                shootThread.join(1000);
+            }
+            if (zombieThread != null && zombieThread.isAlive()) {
+                zombieThread.interrupt();
+                zombieThread.join(1000);
+            }
+            if (syncThread != null && syncThread.isAlive()) {
+                syncThread.interrupt();
+                syncThread.join(1000);
+            }
+            if (checkThread != null && checkThread.isAlive()) {
+                checkThread.interrupt();
+                checkThread.join(1000);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** อัปเดตเกม (แทนที่ actionPerformed) */
+    private void updateGame() {
+        // In multiplayer mode, continue updating even if this player is dead
+        // until all players are dead
+        if (gameOver && (!isMultiplayer || areAllPlayersDead())) {
+            return;
+        }
+
+        // Only update player-specific things if this player is alive
+        if (!gameOver) {
+            // อัปเดตตำแหน่งผู้เล่นแบบต่อเนื่อง
+            player.update();
+        }
+
+        // Send player position at consistent intervals (even when dead for synchronization)
+        long currentTime = System.currentTimeMillis();
+        if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 100)) {
+            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
+            lastPositionUpdate = currentTime;
+        }
+
+        // อัปเดตตำแหน่ง (always update bullets and zombies so dead players can see the game)
+        for (Bullet b : new ArrayList<>(bullets)) b.update();
+        for (Zombie z : new ArrayList<>(zombies)) z.update();
+
+        List<Bullet> bulletsToRemove = new ArrayList<>();
+        List<Zombie> zombiesToRemove = new ArrayList<>();
+
+        // ชนกระสุน-ซอมบี้ (always process bullet-zombie collisions)
+        for (Bullet b : bullets) {
+            Rectangle br = b.getBounds();
+            for (Zombie z : zombies) {
+                if (br.intersects(z.getBounds())) {
+                    z.health -= b.damage;
+                    bulletsToRemove.add(b);
+                    if (z.health <= 0) {
+                        zombiesToRemove.add(z);
+                        // Only add score if this player is alive
+                        if (!gameOver) {
+                            score += 10;
+                            // Check if this player has won
+                            if (score >= 500) {
+                                handlePlayerWin(playerName);
+                            }
+                            // In multiplayer, send zombie killed information to other players
+                            if (isMultiplayer && gameClient != null) {
+                                gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
+                                // Send updated score
+                                gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        bullets.removeAll(bulletsToRemove);
+        zombies.removeAll(zombiesToRemove);
+
+        // Only check collisions if this player is alive
+        if (!gameOver) {
+            // ซอมบี้ชนผู้เล่น → จบเกม
+            for (Zombie z : zombies) {
+                if (z.getBounds().intersects(player.getBounds())) {
+                    endGame();
+                    break;
+                }
+            }
+
+            // ซอมบี้เดินถึง x = 250 → จบเกม
+            for (Zombie z : zombies) {
+                if (z.x <= 250) {
+                    endGame();
+                    break;
+                }
+            }
+        }
+
+        // ลบกระสุนที่พ้นจอ
+        bullets.removeIf(b -> b.x > WIDTH);
     }
 
     /** วาดทุกอย่าง */
@@ -409,99 +603,21 @@ class GamePanel extends JPanel implements ActionListener {
         g2.drawString(name, nameX, nameY);
     }
 
-    /** อัปเดตเกมแต่ละเฟรม */
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        // Stop all game updates when game is over
-        if (gameOver) {
-            return;
-        }
 
-        // Only update player-specific things if this player is alive
-        if (!gameOver) {
-            // อัปเดตตำแหน่งผู้เล่นแบบต่อเนื่อง
-            player.update();
-        }
-
-        // Send player position at consistent intervals (even when dead for synchronization)
-        long currentTime = System.currentTimeMillis();
-        if (isMultiplayer && gameClient != null && (currentTime - lastPositionUpdate >= 100)) {
-            gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + (int)player.x + "," + (int)player.y);
-            lastPositionUpdate = currentTime;
-        }
-
-        // อัปเดตตำแหน่ง (always update bullets and zombies so dead players can see the game)
-        for (Bullet b : new ArrayList<>(bullets)) b.update();
-        for (Zombie z : new ArrayList<>(zombies)) z.update();
-
-        List<Bullet> bulletsToRemove = new ArrayList<>();
-        List<Zombie> zombiesToRemove = new ArrayList<>();
-
-        // ชนกระสุน-ซอมบี้ (always process bullet-zombie collisions)
-        for (Bullet b : bullets) {
-            Rectangle br = b.getBounds();
-            for (Zombie z : zombies) {
-                if (br.intersects(z.getBounds())) {
-                    z.health -= b.damage;
-                    bulletsToRemove.add(b);
-                    if (z.health <= 0) {
-                        zombiesToRemove.add(z);
-                        // Only add score if this player is alive
-                        if (!gameOver) {
-                            score += 100;
-                            // Check if this player has won
-                            if (score >= 500) {
-                                handlePlayerWin(playerName);
-                            }
-                            // In multiplayer, send zombie killed information to other players
-                            if (isMultiplayer && gameClient != null) {
-                                gameClient.sendMessage("ZOMBIE_KILLED:" + z.id);
-                                // Send updated score
-                                gameClient.sendMessage("PLAYER_SCORE:" + playerName + ":" + score);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        bullets.removeAll(bulletsToRemove);
-        zombies.removeAll(zombiesToRemove);
-
-        // Only check collisions if this player is alive
-        if (!gameOver) {
-            // ซอมบี้ชนผู้เล่น → จบเกม
-            for (Zombie z : zombies) {
-                if (z.getBounds().intersects(player.getBounds())) {
-                    endGame();
-                    break;
-                }
-            }
-
-            // ซอมบี้เดินถึง x = 250 → จบเกม
-            for (Zombie z : zombies) {
-                if (z.x <= 250) {
-                    endGame();
-                    break;
-                }
-            }
-        }
-
-        // ลบกระสุนที่พ้นจอ
-        bullets.removeIf(b -> b.x > WIDTH);
-
-        repaint();
-    }
 
     /** จบเกม */
     void endGame() {
         gameOver = true;
         
-        // Stop all timers immediately for both solo and multiplayer modes
-        gameTimer.stop();
-        shootTimer.stop();
-        zombieTimer.stop();
-        if (syncTimer != null) syncTimer.stop();
+        // In solo mode, stop all threads immediately
+        if (!isMultiplayer) {
+            stopGameThreads();
+        } else {
+            // In multiplayer mode, only stop player-specific activities
+            shootingActive = false; // Stop shooting for this player
+            zombieSpawningActive = false; // Stop spawning zombies for this player
+            // Keep gameThread and syncThread running to receive updates from other players
+        }
         
         // In multiplayer mode, notify other players about game over
         if (isMultiplayer && gameClient != null) {
@@ -519,18 +635,20 @@ class GamePanel extends JPanel implements ActionListener {
         gameOver = true;
         this.winnerName = winnerName; // Store the winner's name for MVP display
         
-        // Stop all timers immediately for both solo and multiplayer modes
-        gameTimer.stop();
-        shootTimer.stop();
-        zombieTimer.stop();
-        if (syncTimer != null) syncTimer.stop();
+        // Stop all threads immediately for both solo and multiplayer modes
+        stopGameThreads();
         
         // In multiplayer mode, notify other players about the win
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("PLAYER_WIN:" + winnerName);
         }
         
-        repaint();
+        SwingUtilities.invokeLater(this::repaint);
+    }
+
+    /** ทำความสะอาดเมื่อปิดเกม */
+    public void cleanup() {
+        stopGameThreads();
     }
     
 
@@ -541,20 +659,17 @@ class GamePanel extends JPanel implements ActionListener {
         }
         
         // In multiplayer mode, check if all players are marked as dead (-1)
-        // Also check if player is actually in the game (not just in scores map)
         for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
             String playerName = entry.getKey();
             Integer score = entry.getValue();
             
-            // Check if player is still in the game and not marked as dead
+            // Check if player is still alive (not marked as dead with -1)
             if (score != null && score != -1) {
-                // Check if this player is still connected
-                if (otherPlayers.containsKey(playerName) || playerName.equals(this.playerName)) {
-                    return false;
-                }
+                return false; // At least one player is still alive
             }
         }
-        return true;
+        
+        return true; // All players are dead
     }
 
     public void handleNetworkMessage(String message) {
@@ -645,14 +760,22 @@ class GamePanel extends JPanel implements ActionListener {
                 if (parts.length >= 2) {
                     String zombieId = parts[0];
                     String[] coords = parts[1].split(",");
-                    if (coords.length >= 3) { // x, y, speed
+                    if (coords.length >= 4) { // x, y, speed, zombieType
+                        int x = Integer.parseInt(coords[0]);
+                        int y = Integer.parseInt(coords[1]);
+                        double speed = Double.parseDouble(coords[2]);
+                        String zombieType = coords[3];
+                        Zombie zombie = new Zombie(x, y, zombieId, speed, zombieType);
+                        // Store zombie with ID for proper synchronization
+                        zombies.add(zombie);
+                    } else if (coords.length >= 3) { // x, y, speed (fallback)
                         int x = Integer.parseInt(coords[0]);
                         int y = Integer.parseInt(coords[1]);
                         double speed = Double.parseDouble(coords[2]);
                         Zombie zombie = new Zombie(x, y, zombieId, speed);
                         // Store zombie with ID for proper synchronization
                         zombies.add(zombie);
-                    } else if (coords.length >= 2) { // fallback for old format
+                    } else if (coords.length >= 2) { // x, y (old format fallback)
                         int x = Integer.parseInt(coords[0]);
                         int y = Integer.parseInt(coords[1]);
                         Zombie zombie = new Zombie(x, y, zombieId);
@@ -989,34 +1112,83 @@ class Player {
     }
 }
 
-/** คลาสซอมบี้ */
+
 class Zombie {
     Random  rand = new Random();
     int x, y;
-    int size = 50; // Increased size to better display zombie image
+    int size = 60; // Increased size to better display zombie image
     double speed;
     String id; // Unique ID for synchronization
 
     int health = 30; // เลือดเริ่มต้นของซอมบี้
+    String zombieType = "type1"; // Zombie type: "type1", "type2", "type3", or "type4"
     
-    // โหลดรูปซอมบี้
-    static ImageIcon zombieIcon = new ImageIcon(
-            System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
-                    + File.separator + "game" + File.separator + "Zombie.png");
-    static Image zombieImage = zombieIcon.getImage();
+    // โหลดรูปซอมบี้ทั้ง 4 แบบ
+    static ImageIcon zombieIcon1;
+    static ImageIcon zombieIcon2;
+    static ImageIcon zombieIcon3;
+    static ImageIcon zombieIcon4;
+    static Image zombieImage1;
+    static Image zombieImage2;
+    static Image zombieImage3;
+    static Image zombieImage4;
+    
+    // Static initializer to load zombie images safely
+    static {
+        try {
+            zombieIcon1 = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "Zombie1rv.png");
+            zombieImage1 = zombieIcon1.getImage();
+            
+            zombieIcon2 = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "Zombie2rv.png");
+            zombieImage2 = zombieIcon2.getImage();
+            
+            zombieIcon3 = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "Zombie3rv.png");
+            zombieImage3 = zombieIcon3.getImage();
+            
+            zombieIcon4 = new ImageIcon(
+                System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
+                        + File.separator + "game" + File.separator + "Zombie4rv.png");
+            zombieImage4 = zombieIcon4.getImage();
+            
+            System.out.println("Loaded zombie images - Type1: " + (zombieImage1 != null) + 
+                             ", Type2: " + (zombieImage2 != null) + 
+                             ", Type3: " + (zombieImage3 != null) + 
+                             ", Type4: " + (zombieImage4 != null));
+        } catch (Exception e) {
+            System.err.println("Failed to load zombie images: " + e.getMessage());
+            zombieImage1 = null;
+            zombieImage2 = null;
+            zombieImage3 = null;
+            zombieImage4 = null;
+        }
+    }
 
     Zombie(int x, int y) {
         this.x = x;
         this.y = y;
-        this.speed = rand.nextDouble()*1+0.5;
         this.id = java.util.UUID.randomUUID().toString();
+        // Randomly assign zombie type from 4 types
+        int typeNum = rand.nextInt(4) + 1; // 1-4
+        this.zombieType = "type" + typeNum;
+        // Set properties based on zombie type
+        setZombieProperties();
     }
     
     Zombie(int x, int y, String id) {
         this.x = x;
         this.y = y;
-        this.speed = rand.nextDouble()*1+0.5;
         this.id = id;
+        // Randomly assign zombie type from 4 types
+        int typeNum = rand.nextInt(4) + 1; // 1-4
+        this.zombieType = "type" + typeNum;
+        // Set properties based on zombie type
+        setZombieProperties();
     }
     
     Zombie(int x, int y, String id, double speed) {
@@ -1024,16 +1196,112 @@ class Zombie {
         this.y = y;
         this.speed = speed;
         this.id = id;
+        // Randomly assign zombie type from 4 types
+        int typeNum = rand.nextInt(4) + 1; // 1-4
+        this.zombieType = "type" + typeNum;
+        // Don't override speed for this constructor since it's explicitly set
+    }
+    
+    Zombie(int x, int y, String id, double speed, String zombieType) {
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
+        this.id = id;
+        this.zombieType = zombieType != null ? zombieType : "type1";
+        // Don't override speed and health for this constructor since they're explicitly set
+    }
+    
+    /** Set zombie properties based on type */
+    private void setZombieProperties() {
+        switch (zombieType) {
+            case "type1":
+                // Type 1: Balanced zombie
+                this.speed = rand.nextDouble() * 1 + 0.5; // 0.5-1.5 speed
+                this.health = 30; // Standard health
+                break;
+            case "type2":
+                // Type 2: Fast but weak zombie
+                this.speed = rand.nextDouble() * 1.5 + 0.8; // 0.8-2.3 speed
+                this.health = 20; // Low health
+                break;
+            case "type3":
+                // Type 3: Slow but strong zombie
+                this.speed = rand.nextDouble() * 0.8 + 0.3; // 0.3-1.1 speed
+                this.health = 40; // High health
+                break;
+            case "type4":
+                // Type 4: Very fast but very weak zombie
+                this.speed = rand.nextDouble() * 2 + 1.0; // 1.0-3.0 speed
+                this.health = 15; // Very low health
+                break;
+            default:
+                // Default to type1 properties
+                this.speed = rand.nextDouble() * 1 + 0.5;
+                this.health = 30;
+                break;
+        }
     }
 
     void draw(Graphics g) {
+        // เลือกรูปซอมบี้ตามประเภท
+        Image imageToDraw = null;
+        switch (zombieType) {
+            case "type1":
+                imageToDraw = zombieImage1;
+                break;
+            case "type2":
+                imageToDraw = zombieImage2;
+                break;
+            case "type3":
+                imageToDraw = zombieImage3;
+                break;
+            case "type4":
+                imageToDraw = zombieImage4;
+                break;
+            default:
+                imageToDraw = zombieImage1; // Default to type1
+                break;
+        }
+        
         // วาดรูปซอมบี้
-        g.drawImage(zombieImage, x, y, size, 75, null);
+        if (imageToDraw != null) {
+            g.drawImage(imageToDraw, x, y, size, 75, null);
+        } else {
+            // Fallback to colored rectangle if image loading fails
+            g.setColor(Color.GREEN);
+            g.fillRect(x, y, size, 75);
+        }
+        
+        // แถบ HP with type-specific colors
         g.setColor(Color.RED);
         g.fillRect(x, y - 10, size, 5);
-        g.setColor(Color.GREEN);
-        int hpBar = Math.max(0, (int) ((health / 30.0) * size));
+        
+        // Set health bar color based on zombie type
+        Color healthColor;
+        switch (zombieType) {
+            case "type1": healthColor = Color.GREEN; break;      // Balanced - Green
+            case "type2": healthColor = Color.YELLOW; break;     // Fast - Yellow
+            case "type3": healthColor = Color.BLUE; break;       // Strong - Blue
+            case "type4": healthColor = Color.ORANGE; break;     // Very Fast - Orange
+            default: healthColor = Color.GREEN; break;
+        }
+        g.setColor(healthColor);
+        
+        // Calculate health bar based on zombie type's max health
+        double maxHealth = getMaxHealth();
+        int hpBar = Math.max(0, (int) ((health / maxHealth) * size));
         g.fillRect(x, y - 10, hpBar, 5);
+    }
+    
+    /** Get max health based on zombie type */
+    private double getMaxHealth() {
+        switch (zombieType) {
+            case "type1": return 30.0;
+            case "type2": return 20.0;
+            case "type3": return 40.0;
+            case "type4": return 15.0;
+            default: return 30.0;
+        }
     }
 
     void update() {

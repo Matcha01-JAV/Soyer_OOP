@@ -53,7 +53,6 @@ class MainPanel extends JPanel {
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "Chgirl.png");
 
-
     public static String selectedCharacter = "male";
 
     // ปุ่มหน้าแรก
@@ -207,25 +206,24 @@ class MainPanel extends JPanel {
                 soyerMaleName.setForeground(Color.WHITE);
                 soyerMaleName.setOpaque(true);
                 soyerMaleName.setBackground(new Color(0, 0, 0, 150));
-                soyerMaleName.setBounds(300 - 10, 300 + soyerMaleIcon.getIconHeight() + 10, soyerMaleIcon.getIconWidth() + 20, 30);
+                soyerMaleName.setBounds(300 - 10, 300 + soyerMaleIcon.getIconHeight() + 10,
+                        soyerMaleIcon.getIconWidth() + 20, 30);
                 bgLabel.add(soyerMaleName);
-
 
                 JButton selectSoyerBtn = new JButton("Select Soyer");
                 selectSoyerBtn.setFont(new Font("Arial", Font.BOLD, 18));
                 selectSoyerBtn.setBackground(new Color(76, 175, 80));
                 selectSoyerBtn.setForeground(Color.WHITE);
                 selectSoyerBtn.setFocusPainted(false);
-                selectSoyerBtn.setBounds(300 + (soyerMaleIcon.getIconWidth() - 150) / 2, 300 + soyerMaleIcon.getIconHeight() + 50, 150, 40);
+                selectSoyerBtn.setBounds(300 + (soyerMaleIcon.getIconWidth() - 150) / 2,
+                        300 + soyerMaleIcon.getIconHeight() + 50, 150, 40);
                 selectSoyerBtn.addActionListener(ev -> {
                     MainPanel.selectedCharacter = "male";
-                    if (characterFrame != null)
-                    {
+                    if (characterFrame != null) {
                         characterFrame.dispose();
                         characterFrame = null;
-                     }
-                    if (gameFrame != null)
-                    {
+                    }
+                    if (gameFrame != null) {
                         gameFrame.setVisible(true);
                     }
                     ImageIcon male = new ImageIcon(
@@ -234,11 +232,14 @@ class MainPanel extends JPanel {
 
                 });
                 selectSoyerBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
                         selectSoyerBtn.setBackground(new Color(102, 187, 106));
                         selectSoyerBtn.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) {
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
                         selectSoyerBtn.setBackground(new Color(76, 175, 80));
                         selectSoyerBtn.setBorder(BorderFactory.createEmptyBorder());
                     }
@@ -258,7 +259,8 @@ class MainPanel extends JPanel {
                 soyerFemaleName.setForeground(Color.WHITE);
                 soyerFemaleName.setOpaque(true);
                 soyerFemaleName.setBackground(new Color(0, 0, 0, 150));
-                soyerFemaleName.setBounds(800 - 10, 300 + soyerFemaleIcon.getIconHeight() + 10, soyerFemaleIcon.getIconWidth() + 20, 30);
+                soyerFemaleName.setBounds(800 - 10, 300 + soyerFemaleIcon.getIconHeight() + 10,
+                        soyerFemaleIcon.getIconWidth() + 20, 30);
                 bgLabel.add(soyerFemaleName);
 
                 JButton selectSoyerGBtn = new JButton("Select Soyer");
@@ -266,16 +268,15 @@ class MainPanel extends JPanel {
                 selectSoyerGBtn.setBackground(new Color(76, 175, 80));
                 selectSoyerGBtn.setForeground(Color.WHITE);
                 selectSoyerGBtn.setFocusPainted(false);
-                selectSoyerGBtn.setBounds(800 + (soyerFemaleIcon.getIconWidth() - 150) / 2, 300 + soyerFemaleIcon.getIconHeight() + 50, 150, 40);
+                selectSoyerGBtn.setBounds(800 + (soyerFemaleIcon.getIconWidth() - 150) / 2,
+                        300 + soyerFemaleIcon.getIconHeight() + 50, 150, 40);
                 selectSoyerGBtn.addActionListener(ev -> {
                     MainPanel.selectedCharacter = "female";
-                    if (characterFrame != null)
-                    {
+                    if (characterFrame != null) {
                         characterFrame.dispose();
                         characterFrame = null;
                     }
-                    if (gameFrame != null)
-                    {
+                    if (gameFrame != null) {
                         gameFrame.setVisible(true);
                     }
                     ImageIcon girl = new ImageIcon(
@@ -283,11 +284,14 @@ class MainPanel extends JPanel {
                                     + File.separator + "game" + File.separator + "player2.png");
                 });
                 selectSoyerGBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                    @Override
+                    public void mouseEntered(java.awt.event.MouseEvent e) {
                         selectSoyerGBtn.setBackground(new Color(102, 187, 106));
                         selectSoyerGBtn.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
                     }
-                    @Override public void mouseExited(java.awt.event.MouseEvent e) {
+
+                    @Override
+                    public void mouseExited(java.awt.event.MouseEvent e) {
                         selectSoyerGBtn.setBackground(new Color(76, 175, 80));
                         selectSoyerGBtn.setBorder(BorderFactory.createEmptyBorder());
                     }
@@ -538,7 +542,8 @@ class MainPanel extends JPanel {
 
                         startGameBtn.addActionListener(ed -> {
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
-                            if (serverVar != null) serverVar.startGame();
+                            if (serverVar != null)
+                                serverVar.startGame();
                             lobby.dispose();
 
                             // Create a GameClient for the host to participate in the multiplayer game
@@ -550,7 +555,8 @@ class MainPanel extends JPanel {
                             // Connect the host client to its own server
                             SwingUtilities.invokeLater(() -> {
                                 if (hostClient.connect("localhost", port)) {
-                                    GameFrame frame = new GameFrame(playerName, hostClient, MainPanel.selectedCharacter);
+                                    GameFrame frame = new GameFrame(playerName, hostClient,
+                                            MainPanel.selectedCharacter);
                                     // Set up message forwarding to the game panel
                                     hostClient.setMessageListener(msg -> {
                                         GamePanel panel = frame.getGamePanel();
@@ -589,7 +595,6 @@ class MainPanel extends JPanel {
                             }
                         });
                         poll.start();
-
 
                         lobby.addWindowListener(new java.awt.event.WindowAdapter() {
                             @Override
@@ -712,7 +717,8 @@ class MainPanel extends JPanel {
                                 } else if (message.startsWith("GAME_START")) {
                                     joinFrame.dispose();
                                     SwingUtilities.invokeLater(() -> {
-                                        GameFrame frame = new GameFrame(selfName, clientHolder[0], MainPanel.selectedCharacter);
+                                        GameFrame frame = new GameFrame(selfName, clientHolder[0],
+                                                MainPanel.selectedCharacter);
                                         // Set up message forwarding to the game panel
                                         clientHolder[0].setMessageListener(msg -> {
                                             GamePanel panel = frame.getGamePanel();
