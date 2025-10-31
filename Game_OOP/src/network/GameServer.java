@@ -15,6 +15,7 @@ public class GameServer {
     private List<ClientHandler> clients;
     private volatile boolean isRunning;
     private int port;
+    private String hostPlayerName; // Track the host player name
 
     // Game state
     private List<String> playerNames;
@@ -123,6 +124,11 @@ public class GameServer {
     public synchronized void addPlayer(String playerName, ClientHandler client) {
         if (playerName.equalsIgnoreCase("CleanName")) return;
         if (playerName != null && client != null) {
+            // Set the first player as the host
+            if (hostPlayerName == null) {
+                hostPlayerName = playerName;
+            }
+            
             playerNames.add(playerName);
             playerStates.put(playerName, new PlayerState());
             broadcast("PLAYER_JOINED:" + playerName);
@@ -193,5 +199,12 @@ public class GameServer {
      */
     public boolean isRunning() {
         return isRunning;
+    }
+    
+    /**
+     * Check if a player is the host
+     */
+    public boolean isHost(String playerName) {
+        return hostPlayerName != null && hostPlayerName.equals(playerName);
     }
 }

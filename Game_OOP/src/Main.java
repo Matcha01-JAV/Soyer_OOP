@@ -28,11 +28,9 @@ class MainPanel extends JPanel {
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "newbg.png");
     private final Image bg = bgIcon.getImage();
-
     private final ImageIcon bgIcon2 = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "ch.png");
-
     private final ImageIcon startIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
                     + File.separator + "game" + File.separator + "startnew.png");
@@ -69,7 +67,7 @@ class MainPanel extends JPanel {
         setLayout(null);
 
         // ขนาด/สไตล์ปุ่ม
-        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight());
+        start.setSize(startIcon.getIconWidth(), startIcon.getIconHeight()- 97);
         character.setSize(characterIcon.getIconWidth(), characterIcon.getIconHeight());
 
         Button(start);
@@ -184,16 +182,14 @@ class MainPanel extends JPanel {
                 }
 
                 characterFrame = new JFrame("Character Selection");
-                characterFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+                characterFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 characterFrame.setSize(500, 430);
                 characterFrame.setLocationRelativeTo(null);
                 characterFrame.setResizable(false);
 
-                // พื้นหลัง + Layout
                 JLabel bgLabel = new JLabel(bgIcon2);
                 bgLabel.setLayout(new BorderLayout());
                 characterFrame.setContentPane(bgLabel);
-
                 characterFrame.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosed(java.awt.event.WindowEvent windowEvent) {
@@ -224,7 +220,7 @@ class MainPanel extends JPanel {
                 int randomNum = (int) (Math.random() * 9000) + 1000;
                 final String playerName;
                 if (name == null || name.isBlank()) {
-                    playerName = "Player" + ""+randomNum;
+                    playerName = "Player" + "" + randomNum;
                 } else {
                     playerName = name.trim();
                 }
@@ -397,7 +393,7 @@ class MainPanel extends JPanel {
 
                         JLabel playersTitle = new JLabel("Players");
                         playersTitle.setFont(new Font("Arial", Font.BOLD, 42));
-                        playersTitle.setForeground(new Color(193, 193, 193));
+                        playersTitle.setForeground(new Color(255, 255, 255));
                         playersTitle.setBounds(18, 8, 400, 50);
                         playersPanel.add(playersTitle);
 
@@ -405,7 +401,7 @@ class MainPanel extends JPanel {
                         JList<String> playerList = new JList<>(model);
 
                         playerList.setFont(new Font("Arial", Font.PLAIN, 24));
-                        playerList.setForeground(new Color(220, 220, 220));
+                        playerList.setForeground(new Color(0, 0, 0));
                         playerList.setOpaque(false);
 
                         JScrollPane scroll = new JScrollPane(playerList);
@@ -438,13 +434,13 @@ class MainPanel extends JPanel {
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
                             if (serverVar != null) serverVar.startGame();
                             lobby.dispose();
-                            
+
                             // Create a GameClient for the host to participate in the multiplayer game
                             GameClient hostClient = new GameClient(playerName, message -> {
                                 // The host will receive its own messages through the server loopback
                                 // In a real implementation, we would handle this properly
                             });
-                            
+
                             // Connect the host client to its own server
                             SwingUtilities.invokeLater(() -> {
                                 if (hostClient.connect("localhost", port)) {
@@ -456,6 +452,11 @@ class MainPanel extends JPanel {
                                             panel.handleNetworkMessage(msg);
                                         }
                                     });
+                                    // Set the host flag for the host player
+                                    GamePanel panel = frame.getGamePanel();
+                                    if (panel != null) {
+                                        panel.setAsHost();
+                                    }
                                 } else {
                                     // Fallback to solo mode if connection fails
                                     new GameFrame(playerName);
@@ -635,7 +636,7 @@ class MainPanel extends JPanel {
                             JLabel bgLobby = new JLabel(bgIcon);
                             bgLobby.setLayout(null);
                             lobby.setContentPane(bgLobby);
-                            
+
                             JPanel playersPanel = new JPanel(null);
                             playersPanel.setBackground(new Color(54, 54, 48, 220));
                             playersPanel.setBounds(70, 130, 600, 330);

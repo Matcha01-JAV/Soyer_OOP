@@ -38,6 +38,9 @@ class GamePanel extends JPanel implements ActionListener {
     GameClient gameClient = null;
     Map<String, Player> otherPlayers = new HashMap<>();
     Map<String, Integer> playerScores = new HashMap<>(); // Track scores for each player
+    boolean isHostPlayer = false; // Track if this player is the host
+    boolean allPlayersDead = false; // Track if all players are dead
+    JButton nextButton = null; // Button for host to restart when all players are dead
 
     ImageIcon bgIcon = new ImageIcon(
             System.getProperty("user.dir") + File.separator + "Game_OOP" + File.separator + "src"
@@ -67,6 +70,7 @@ class GamePanel extends JPanel implements ActionListener {
     GamePanel(String name) {
         this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
         this.isMultiplayer = false;
+        this.isHostPlayer = true; // Solo player is always the host
         initializeGame();
     }
     
@@ -75,6 +79,7 @@ class GamePanel extends JPanel implements ActionListener {
         this.playerName = (name == null || name.isBlank()) ? "Player" : name.trim();
         this.gameClient = client;
         this.isMultiplayer = true;
+        this.isHostPlayer = false; // Clients are not hosts by default
         initializeGame();
     }
     
@@ -114,7 +119,16 @@ class GamePanel extends JPanel implements ActionListener {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (gameOver) {
-                    if (e.getKeyCode() == KeyEvent.VK_SPACE) restartGame();
+                    // Only host can restart the game
+                    if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                        if (isHost() && allPlayersDead) {
+                            restartGame();
+                            // Notify all clients that the game has restarted
+                            if (isMultiplayer && gameClient != null) {
+                                gameClient.sendMessage("HOST_RESTART");
+                            }
+                        }
+                    }
                     return;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_W)
@@ -236,11 +250,15 @@ class GamePanel extends JPanel implements ActionListener {
         
         // แสดงคะแนนของผู้เล่นคนอื่นในโหมด multiplayer
         if (isMultiplayer) {
-            int yOffset = 60;
+            int ys = 60;
             for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
                 if (!entry.getKey().equals(playerName)) {
-                    g.drawString(entry.getKey() + ": " + entry.getValue(), 20, yOffset);
-                    yOffset += 30;
+                    if (entry.getValue() == -1) {
+                        g.drawString(entry.getKey() + ": DIE ", 20, ys);
+                    } else {
+                        g.drawString(entry.getKey() + ": " + entry.getValue(), 20,ys );
+                    }
+                    ys += 30;
                 }
             }
         }
@@ -249,10 +267,27 @@ class GamePanel extends JPanel implements ActionListener {
         if (gameOver) {
             g.setColor(Color.RED);
             g.setFont(new Font("Tahoma", Font.BOLD, 50));
-            g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
-            g.setFont(new Font("Tahoma", Font.BOLD, 20));
-            g.setColor(Color.YELLOW);
-            g.drawString("Press SPACE to Restart", WIDTH / 2 - 130, HEIGHT / 2 + 40);
+            
+            // Check if this is a client that died and is waiting for host
+            if (isMultiplayer && !isHost()) {
+                g.drawString("WAIT HOST", WIDTH / 2 - 200, HEIGHT / 2);
+                g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                g.setColor(Color.YELLOW);
+                g.drawString("Waiting host", WIDTH / 2 - 150, HEIGHT / 2 + 40);
+            } else {
+                g.drawString("GAME OVER", WIDTH / 2 - 150, HEIGHT / 2);
+                g.setFont(new Font("Tahoma", Font.BOLD, 20));
+                g.setColor(Color.YELLOW);
+                if (isHost()) {
+                    if (allPlayersDead) {
+                        g.drawString("All players dead. Press SPACE or click Next to restart", WIDTH / 2 - 250, HEIGHT / 2 + 40);
+                    } else {
+                        g.drawString("Waiting for all players to die...", WIDTH / 2 - 150, HEIGHT / 2 + 40);
+                    }
+                } else {
+                    g.drawString("You died. Waiting for host to restart the game...", WIDTH / 2 - 200, HEIGHT / 2 + 40);
+                }
+            }
         }
     }
 
@@ -390,15 +425,116 @@ class GamePanel extends JPanel implements ActionListener {
         shootTimer.stop();
         zombieTimer.stop();
         if (syncTimer != null) syncTimer.stop();
+        
+        // In multiplayer mode, notify other players about game over
+        if (isMultiplayer && gameClient != null) {
+            gameClient.sendMessage("PLAYER_DIED:" + playerName);
+        }
+        
+        // If this is the host and we're in multiplayer mode, create the Next button
+        if (isMultiplayer && isHost()) {
+            createNextButton();
+        }
+    }
+    
+    private void createNextButton() {
+        if (nextButton == null) {
+            nextButton = new JButton("Next");
+            nextButton.setFont(new Font("Tahoma", Font.BOLD, 20));
+            nextButton.setBounds(WIDTH / 2 - 75, HEIGHT / 2 + 150, 150, 60);
+            nextButton.setBackground(Color.GRAY);
+            nextButton.setForeground(Color.WHITE);
+            nextButton.setFocusPainted(false);
+            nextButton.setEnabled(false);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            nextButton.addActionListener(e -> {
+                if (areAllPlayersDead()) {
+                    if (isMultiplayer && gameClient != null) {
+                        gameClient.sendMessage("HOST_RESTART");
+                    }
+                    revalidate();
+                    repaint();
+                    
+                    // Show MVP screen
+                    JFrame last = new JFrame("MVP");
+                    last.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                    last.setResizable(false);
+                    JLabel lbg = new JLabel(bgIcon);
+                    lbg.setLayout(null);
+                    lbg.setPreferredSize(new Dimension(bgIcon.getIconWidth(), bgIcon.getIconHeight()));
+                    JPanel card = new JPanel(null);
+                    card.setBackground(new Color(54,54,48));
+                    card.setBounds(200, 120, 400, 300);
+                    card.setBorder(BorderFactory.createLineBorder(new Color(35,34,29), 4, true));
+
+                    JLabel title = new JLabel("MVP", SwingConstants.CENTER);
+                    title.setFont(new Font("Arial", Font.BOLD, 48));
+                    title.setForeground(Color.WHITE);
+                    title.setBounds(0, 20, 400, 60);
+                    card.add(title);
+
+                    JLabel name = new JLabel("name: Player");
+                    name.setFont(new Font("Arial", Font.PLAIN, 22));
+                    name.setForeground(Color.WHITE);
+                    name.setBounds(40, 100, 300, 40);
+                    card.add(name);
+
+                    JLabel score = new JLabel("Score: 1200");
+                    score.setFont(new Font("Arial", Font.PLAIN, 22));
+                    score.setForeground(Color.WHITE);
+                    score.setBounds(40, 140, 300, 40);
+                    card.add(score);
+
+                    JLabel bottom = new JLabel("ตัวละคร", SwingConstants.CENTER);
+                    bottom.setFont(new Font("Arial", Font.BOLD, 28));
+                    bottom.setForeground(Color.WHITE);
+                    bottom.setBounds(0, 220, 400, 50);
+                    card.add(bottom);
+
+                    last.pack();
+                    last.setSize(bgIcon.getIconWidth(), bgIcon.getIconHeight());
+                    last.setLocationRelativeTo(null);
+                    last.setVisible(true);
+                }
+            });
+            add(nextButton);
+            setComponentZOrder(nextButton, 0);
+        }
+        repaint();
+    }
+    
+
+    private boolean areAllPlayersDead() {
+        if (!gameOver)
+        {
+            return false;
+        }
+        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            if (!entry.getKey().equals(playerName)) {
+                // If any player is not marked as dead (-1), return false
+                if (entry.getValue() != -1) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
-    /** เริ่มเกมใหม่ */
     void restartGame() {
         score = 0;
         gameOver = false;
+        allPlayersDead = false;
         zombies.clear();
         bullets.clear();
         player = new Player(300, 359); // Start in the middle of the road
+        
+        // Remove the next button if it exists
+        if (nextButton != null) {
+            remove(nextButton);
+            nextButton = null;
+        }
+        
         gameTimer.start();
         shootTimer.start();
         zombieTimer.start();
@@ -409,23 +545,13 @@ class GamePanel extends JPanel implements ActionListener {
             if (!syncTimer.isRunning()) {
                 syncTimer.start();
             }
+            // Notify other players that the game has restarted
+            gameClient.sendMessage("GAME_RESTART");
         }
         requestFocusInWindow();
+        repaint();
     }
-    
-    /**
-     * Set the message listener for the GameClient
-     */
-    public void setMessageListener(GameClient.MessageListener listener) {
-        if (gameClient != null) {
-            // We can't directly set the listener, but we can create a new GameClient
-            // This is a workaround since GameClient doesn't have a setter method
-        }
-    }
-    
-    /**
-     * Handle network messages in multiplayer mode
-     */
+
     public void handleNetworkMessage(String message) {
         if (!isMultiplayer) return;
         
@@ -565,10 +691,40 @@ class GamePanel extends JPanel implements ActionListener {
             } else if (message.startsWith("GAME_START")) {
                 // Game started by host
                 gameOver = false;
+                isHostPlayer = false; // When game starts, this client is not the host
                 // Send current player position to other players
                 if (isMultiplayer && gameClient != null) {
                     gameClient.sendMessage("PLAYER_POSITION:" + playerName + ":" + player.x + "," + player.y);
                 }
+            } else if (message.startsWith("PLAYER_DIED:")) {
+                // When another player dies, show that they are waiting for host to restart
+                String deadPlayer = message.substring("PLAYER_DIED:".length());
+                if (!deadPlayer.equals(playerName)) { // Don't process our own death message
+                    playerScores.put(deadPlayer, -1); // Mark as dead with special score
+                    repaint();
+                }
+                
+                // If this is the host, check if all players are now dead
+                if (isHost() && isMultiplayer) {
+                    if (areAllPlayersDead()) {
+                        allPlayersDead = true;
+                        // Enable the Next button
+                        if (nextButton != null) {
+                            nextButton.setBackground(Color.GREEN);
+                            nextButton.setEnabled(true);
+                            nextButton.setText("Next");
+                        }
+                        repaint();
+                    }
+                }
+            } else if (message.startsWith("GAME_RESTART")) {
+                // Only non-host players should restart when host sends this message
+                if (!isHost()) {
+                    restartGame();
+                }
+            } else if (message.startsWith("HOST_RESTART")) {
+                // Explicit host restart command
+                restartGame();
             }
         } catch (NumberFormatException e) {
             System.err.println("Error parsing network message: " + e.getMessage());
@@ -576,6 +732,22 @@ class GamePanel extends JPanel implements ActionListener {
             System.err.println("Unexpected error handling network message: " + e.getMessage());
         }
     }
+
+
+
+    public void setAsHost() {
+        this.isHostPlayer = true;
+    }
+
+    private boolean isHost() {
+        // In solo mode, the player is always the host
+        if (!isMultiplayer) {
+            return true;
+        }
+        // In multiplayer mode, check if this is the host player
+        return isHostPlayer;
+    }
+    
 }
 
 /** คลาสผู้เล่น */
