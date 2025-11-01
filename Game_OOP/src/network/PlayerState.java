@@ -35,7 +35,7 @@ public class PlayerState {
 
         public static PlayerState fromString(String stateStr) {
         try {
-            // เผื่อกรณีโดนส่งมารูปแบบ name:payload → ตัดส่วน name ออก
+
             int firstColon = stateStr.indexOf(':');
             if (firstColon != -1 && stateStr.substring(firstColon + 1).contains(",")) {
                 stateStr = stateStr.substring(firstColon + 1);
