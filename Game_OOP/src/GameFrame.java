@@ -1,44 +1,47 @@
 import javax.swing.*;
 import network.GameClient;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 public class GameFrame extends JFrame {
     private GamePanel gamePanel;
-    private String characterType = "male"; // default character
+    private String characterType = "male"; // ค่าดีฟอลต์ของชนิดตัวละคร
 
-    // เผื่อเรียกแบบไม่ส่งชื่อ
+    // ctor แบบเดี่ยว: ถ้าไม่ส่งชื่อมา จะใช้ "Player"
     public GameFrame() {
         this("Player");
     }
 
-    // โหมด Solo/Host
+    // ctor โหมดเล่นเดี่ยว (ไม่มี client)
     public GameFrame(String playerName) {
-        super("Soyer vs Zombies");
-        commonInit();
-        gamePanel = new GamePanel(playerName);
-        setContentPane(gamePanel);
-        finalizeInit();
+        super("Soyer vs Zombies");      // ตั้ง title หน้าต่าง
+        commonInit();                    // ตั้งค่า window ทั่วไป + listener ปิดหน้าต่าง
+        gamePanel = new GamePanel(playerName); // สร้าง GamePanel โหมด solo
+        setContentPane(gamePanel);       // ใส่ panel ลงใน frame
+        finalizeInit();                  // pack + จัดกึ่งกลาง + แสดงผล
     }
 
-    // โหมด Solo/Host with character selection
+    // ctor โหมดเล่นเดี่ยว + ระบุชนิดตัวละคร
     public GameFrame(String playerName, String characterType) {
         super("Soyer vs Zombies");
-        this.characterType = characterType;
+        this.characterType = characterType;          // จดชนิดตัวละคร
         commonInit();
-        gamePanel = new GamePanel(playerName, characterType);
+        gamePanel = new GamePanel(playerName, characterType); // ส่งชนิดตัวละครให้ GamePanel
         setContentPane(gamePanel);
         finalizeInit();
     }
 
-    // โหมด Multiplayer (มี GameClient)
+    // ctor โหมดเล่นหลายคน (มี GameClient)
     public GameFrame(String playerName, GameClient client) {
         super("Soyer vs Zombies - Multiplayer");
         commonInit();
-        gamePanel = new GamePanel(playerName, client);
+        gamePanel = new GamePanel(playerName, client);  // GamePanel จะรับ/ส่ง network ผ่าน client
         setContentPane(gamePanel);
         finalizeInit();
     }
 
-    // โหมด Multiplayer with character selection
+    // ctor โหมดเล่นหลายคน + ระบุชนิดตัวละคร
     public GameFrame(String playerName, GameClient client, String characterType) {
         super("Soyer vs Zombies - Multiplayer");
         this.characterType = characterType;
@@ -48,36 +51,31 @@ public class GameFrame extends JFrame {
         finalizeInit();
     }
 
-    /** ตั้งค่าพื้นฐานที่ใช้ร่วมกัน */
+    // ตั้งค่าพื้นฐานของ frame
     private void commonInit() {
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // ปิดทั้งแอปเมื่อปิดหน้าต่าง
-        setResizable(false);
-        
-        // Add window listener to cleanup threads when window is closed
-        addWindowListener(new java.awt.event.WindowAdapter() {
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE); // ปิดโปรแกรมเมื่อปิดหน้าต่างนี้
+        setResizable(false);                                     // ไม่ให้ย่อ/ขยายขนาด
+
+        // เวลาผู้ใช้กดปิดหน้าต่าง: เรียก cleanup() ของ GamePanel ก่อน
+        addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+            public void windowClosing(WindowEvent windowEvent) {
                 if (gamePanel != null) {
-                    gamePanel.cleanup();
+                    gamePanel.cleanup(); // ปิดเสียง/หยุดเธรด/แจ้งเซิร์ฟเวอร์/ปิด socket ฯลฯ
                 }
             }
         });
     }
 
-    /** เก็บขั้นตอนท้าย ๆ ให้สั้น */
+    // จบการตั้งค่า UI: คำนวณขนาดจาก preferredSize, จัดกึ่งกลาง, แล้วแสดงผล
     private void finalizeInit() {
-        pack();
-        setLocationRelativeTo(null);
-        setVisible(true);
+        pack();                 // ให้ขนาด frame พอดีกับ content (GamePanel ต้องมี preferredSize)
+        setLocationRelativeTo(null); // จัดให้อยู่กลางหน้าจอ
+        setVisible(true);       // แสดงหน้าต่าง
     }
 
-    /** เผื่ออยากเข้าถึง panel ภายนอก */
+    // ให้ภายนอกเข้าถึง GamePanel ได้ (เช่น ตั้ง host/ส่งต่อ network message)
     public GamePanel getGamePanel() {
         return gamePanel;
-    }
-    
-    /** Get selected character type */
-    public String getCharacterType() {
-        return characterType;
     }
 }
