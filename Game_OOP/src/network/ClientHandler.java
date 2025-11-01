@@ -4,16 +4,13 @@ import java.io.*;
 import java.net.*;
 
 public class ClientHandler implements Runnable {
-    // ซ็อกเก็ตของ client รายนี้
+
     private Socket clientSocket;
-    // อ้างอิงกลับไปที่ GameServer เพื่อเรียกเมธอด broadcast / update state
     private GameServer server;
-    // ช่องทางรับ/ส่งข้อความแบบบรรทัด (line-based)
     private BufferedReader input;
     private PrintWriter output;
     // ชื่อผู้เล่นที่ลงทะเบียนแล้ว (null จนกว่าจะ REGISTER)
     private String playerName;
-    // ใช้ volatile เพื่อให้เธรดอื่นเห็นค่าสถานะล่าสุดทันที
     private volatile boolean isConnected;
 
     public ClientHandler(Socket socket, GameServer server) {
@@ -29,6 +26,7 @@ public class ClientHandler implements Runnable {
             input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             // autoFlush=true เพื่อให้ println ส่งออกทันที
             output = new PrintWriter(clientSocket.getOutputStream(), true);
+
 
             // ==== ขั้นตอน handshake: รอคำสั่งแรก REGISTER:<name> ====
             String message = input.readLine(); // บล็อกจนมีข้อความหรือเชื่อมต่อหลุด
@@ -66,13 +64,12 @@ public class ClientHandler implements Runnable {
         }
 
         if (message.startsWith("PLAYER_STATE|")) {
-            // ตัวอย่าง payload: PLAYER_STATE|x,y,characterType,isAlive...
+
             String stateData = message.substring("PLAYER_STATE|".length());
-            PlayerState st = PlayerState.fromString(stateData); // แปลง string → object
-            server.updatePlayerState(playerName, st); // เก็บ/กระจายสถานะ
+            PlayerState st = PlayerState.fromString(stateData);
+            server.updatePlayerState(playerName, st);
 
         } else if (message.startsWith("START_GAME:")) {
-            // โฮสต์สั่งเริ่มเกม → server broadcast "GAME_START" ไปทุกคน
             server.startGame();
 
         } else if (message.startsWith("PLAYER_POSITION:")) {
@@ -96,7 +93,7 @@ public class ClientHandler implements Runnable {
             return; // ออกจากเมธอด (ไม่ให้ตกไปเช็ค else-if ด้านล่างต่อ)
 
         } else if (message.startsWith("PLAYER_SHOOT:")) {
-            // กระสุน/การยิง: กระจายให้คนอื่นยกเว้นคนยิง
+
             String shootData = message.substring("PLAYER_SHOOT:".length());
             server.broadcastExcept("PLAYER_SHOOT:" + shootData, playerName);
 

@@ -486,7 +486,6 @@ class MainPanel extends JPanel {
                     // กดเปิดพอร์ต → สตาร์ทเซิร์ฟเวอร์ → เปิด Lobby ของ Host
                     openPortBtn.addActionListener(ae -> {
                         String portStr = portField.getText();
-                        // validate ค่าพอร์ต
                         if (portStr == null || portStr.isEmpty() || portStr.equals("INPUT PORT")) {
                             JOptionPane.showMessageDialog(hostFrame, "Please enter a valid port number",
                                     "Invalid Port", JOptionPane.ERROR_MESSAGE);
@@ -506,7 +505,7 @@ class MainPanel extends JPanel {
                             return;
                         }
 
-                        // ปิดหน้าต่างกรอกพอร์ต แล้วเริ่มเซิร์ฟเวอร์ในเธรดแยก (ไม่บล็อก UI)
+
                         hostFrame.dispose();
                         GameServer server = new GameServer(port);
                         new Thread(() -> {
@@ -594,8 +593,12 @@ class MainPanel extends JPanel {
 
                         // กด Start Game → สั่ง server ส่ง GAME_START ให้ทุกคน + สร้าง GameClient ให้ Host เล่นด้วย
                         startGameBtn.addActionListener(ed -> {
+
                             GameServer serverVar = (GameServer) lobby.getRootPane().getClientProperty("server");
-                            if (serverVar != null) serverVar.startGame();
+                            if (serverVar != null)
+                            {
+                                serverVar.startGame();
+                            }
                             lobby.dispose();
 
                             // Host เชื่อมต่อเข้าตัวเอง (localhost) เพื่อเข้าเกมมัลติเพลเยอร์
@@ -756,35 +759,23 @@ class MainPanel extends JPanel {
                         final String selfName = playerName;
 
                         clientHolder[0] = new GameClient(pn, message -> {
-                            // โค้ดส่วนนี้รันบน listener thread → อัปเดต UI ต้องผ่าน invokeLater
+
+
+
                             SwingUtilities.invokeLater(() -> {
                                 if (message.startsWith("PLAYER_LIST:")) {
-                                    String[] players = message.substring("PLAYER_LIST:".length()).split(",");
-                                    if (modelRef[0] != null) {
-                                        modelRef[0].clear();
-                                        modelRef[0].addElement(playerName + " (You)"); // โชว์ตัวเองบรรทัดแรก
-                                        for (String player : players) {
-                                            if (!player.isEmpty() && !player.equals(pn)) {
-                                                modelRef[0].addElement(player);
-                                            }
-                                        }
-                                    }
+
                                 } else if (message.startsWith("PLAYER_JOINED:")) {
-                                    String player = message.substring("PLAYER_JOINED:".length());
-                                    if (modelRef[0] != null && !modelRef[0].contains(player) && !player.equals(pn)) {
-                                        modelRef[0].addElement(player);
-                                    }
+
                                 } else if (message.startsWith("PLAYER_LEFT:")) {
-                                    String player = message.substring("PLAYER_LEFT:".length());
-                                    if (modelRef[0] != null) {
-                                        modelRef[0].removeElement(player);
-                                    }
+
                                 } else if (message.startsWith("GAME_START")) {
-                                    // Host กด Start → ปิด Lobby Join แล้วเข้าเกมจริง
                                     joinFrame.dispose();
+                                    // แล้วเปิด GameFrame ใหม่
                                     SwingUtilities.invokeLater(() -> {
                                         GameFrame frame = new GameFrame(selfName, clientHolder[0],
                                                 MainPanel.selectedCharacter);
+
                                         // ส่งข้อความเครือข่ายเข้า GamePanel
                                         clientHolder[0].setMessageListener(msg -> {
                                             GamePanel panel = frame.getGamePanel();
@@ -800,7 +791,6 @@ class MainPanel extends JPanel {
                         // เชื่อมต่อไปยัง host
                         if (clientHolder[0].connect(host, port)) {
                             joinFrame.dispose();
-
                             // ===== Lobby ฝั่ง Join: รอ Host กด Start =====
                             final GameClient client = clientHolder[0];
 
@@ -854,12 +844,13 @@ class MainPanel extends JPanel {
                         }
                     });
 
+
                     joinFrame.pack();
                     joinFrame.setLocationRelativeTo(null);
                     joinFrame.setVisible(true);
                 });
 
-                // (โหมด Solo ยังไม่ได้ wire ปุ่มในไฟล์นี้ — ถ้าจะใช้ ให้ add ลง bgLabel และใส่ action)
+
             });
         });
     }

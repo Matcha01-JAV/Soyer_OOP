@@ -227,13 +227,12 @@ class GamePanel extends JPanel {
         zombies.add(zombie);
         System.out.println("Spawned zombie: " + zombie.zombieType + " (speed: " + String.format("%.2f", zombie.speed) + ", health: " + zombie.health + ")");
 
-        // In multiplayer, send zombie information to other players
         if (isMultiplayer && gameClient != null) {
             gameClient.sendMessage("ZOMBIE_SPAWN:" + zombie.id + ":" + (WIDTH - 50) + "," + y + "," + zombie.speed + "," + zombie.zombieType);
         }
     }
 
-    /** ซิงก์สถานะเกมกับผู้เล่นคนอื่น (ตำแหน่งซอมบี้/สกอร์/ตำแหน่งเรา/สถานะเรา) */
+
     void syncGameState() {
         if (!isMultiplayer || gameClient == null) return;
 
@@ -923,9 +922,6 @@ class GamePanel extends JPanel {
                     Player otherPlayer = otherPlayers.get(playerName);
                     if (otherPlayer == null) {
                         // Create other players with different colors
-                        Color[] playerColors = {Color.MAGENTA, Color.ORANGE, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY};
-                        Color playerColor = playerColors[otherPlayers.size() % playerColors.length];
-                        otherPlayer = new Player(300, 359, playerColor, characterType);
                         otherPlayers.put(playerName, otherPlayer);
                         playerScores.put(playerName, 0); // Initialize score for new player
                     } else {
@@ -1245,11 +1241,14 @@ class Zombie {
         this.y = y;
         this.speed = speed;
         this.id = id;
-        this.zombieType = zombieType != null ? zombieType : "type1";
+        if (zombieType != null) {
+            this.zombieType = zombieType;
+        } else {
+            this.zombieType = "type1";
+        }
 
     }
 
-    /** ตั้งค่าความเร็วและพลังชีวิตตามชนิดของซอมบี้ (ใช้ตอนเราเป็นคน spawn) */
     private void setZombieProperties() {
         switch (zombieType) {
             case "type1":

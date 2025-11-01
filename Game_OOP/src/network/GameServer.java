@@ -23,7 +23,6 @@ public class GameServer {
 
     public GameServer(int port) {
         this.port = port;
-        // ใช้ CopyOnWriteArrayList เพื่อให้ iterate/broadcast ได้ปลอดภัยเวลามีการ add/remove
         this.clients = new CopyOnWriteArrayList<>();
         this.playerNames = new ArrayList<>();
         this.playerStates = new ConcurrentHashMap<>();
@@ -53,7 +52,7 @@ public class GameServer {
         // วนรับ connection ของลูกค้าใหม่
         while (isRunning) {
             try {
-                Socket clientSocket = serverSocket.accept();               // บล็อกรอ client
+                Socket clientSocket = serverSocket.accept();
                 ClientHandler clientHandler = new ClientHandler(clientSocket, this);
                 clients.add(clientHandler);                                // เก็บ handler
                 clientThreadPool.execute(clientHandler);                   // ให้ pool จัดเธรดไป run()
@@ -112,23 +111,20 @@ public class GameServer {
 
     // มีผู้เล่นใหม่เข้ามา → ลงทะเบียนเข้า list + ใส่ state เริ่มต้น + sync ให้ทุกคน
     public synchronized void addPlayer(String playerName, ClientHandler client) {
-        if (playerName.equalsIgnoreCase("CleanName")) { // กรองชื่อพิเศษ (ป้องกันคำสั่งล้างชื่อ?)
-            return;
-        }
         if (playerName != null && client != null) {
             // คนแรกที่เข้ามาถือเป็น host
             if (hostPlayerName == null) {
                 hostPlayerName = playerName;
             }
 
-            playerNames.add(playerName);               // เก็บชื่อใน list (ซ้ำกับคลัง clients)
-            playerStates.put(playerName, new PlayerState()); // ใส่ค่า default
+            playerNames.add(playerName);                        // เก็บชื่อใน list (ซ้ำกับคลัง clients)
+            playerStates.put(playerName, new PlayerState());    // ใส่ค่า default
 
             broadcast("PLAYER_JOINED:" + playerName);  // บอกทุกคนว่ามีคนเข้ามา
             sendPlayerList(client);                    // ส่งรายชื่อทั้งหมดให้คนที่เพิ่งเข้ามา
             sendAllStates(client);                     // ส่งสถานะของทุกคนให้คนที่เพิ่งเข้ามา
 
-            // ตั้ง state เริ่มต้น (ซ้ำกับด้านบนที่เพิ่ง put default → อันนี้จะทับอีกครั้ง)
+
             PlayerState newState = new PlayerState(300, 359, 0, true);
             playerStates.put(playerName, newState);
             broadcast("PLAYER_STATE:" + playerName + ":" + newState.toString()); // แจ้ง state ของคนใหม่ให้ทุกคน
@@ -140,7 +136,6 @@ public class GameServer {
         if (playerName != null) {
             playerNames.remove(playerName);
             playerStates.remove(playerName);
-            // ลบ handler ของ player นี้ออกจาก clients
             clients.removeIf(client -> client != null
                     && client.getPlayerName() != null
                     && client.getPlayerName().equals(playerName));
@@ -167,7 +162,7 @@ public class GameServer {
         // ⚠ โปรโตคอลตรงนี้ใช้ "STATE|" (pipe) → อาจไม่สอดคล้องกับที่ client อื่น ๆ ฟังอยู่
         broadcast("STATE|" + playerName + "|" + state.toString());
 
-        // ตัวอย่างกติกาชนะ
+        // ตัวอย่างกติกาชนะlobby
         if (state.score >= 500) {
             broadcastWinner(playerName);
         }

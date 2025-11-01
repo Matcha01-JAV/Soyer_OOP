@@ -15,8 +15,7 @@ public class GameFrame extends JFrame {
 
     // ctor โหมดเล่นเดี่ยว (ไม่มี client)
     public GameFrame(String playerName) {
-        super("Soyer vs Zombies");      // ตั้ง title หน้าต่าง
-        commonInit();                    // ตั้งค่า window ทั่วไป + listener ปิดหน้าต่าง
+        super("Soyer vs Zombies");      // ตั้ง title หน้าต่าง// ตั้งค่า window ทั่วไป + listener ปิดหน้าต่าง
         gamePanel = new GamePanel(playerName); // สร้าง GamePanel โหมด solo
         setContentPane(gamePanel);       // ใส่ panel ลงใน frame
         finalizeInit();                  // pack + จัดกึ่งกลาง + แสดงผล

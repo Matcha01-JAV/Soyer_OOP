@@ -31,7 +31,7 @@ public class GameClient {
     public boolean connect(String host, int port) {
         try {
             clientSocket = new Socket(host, port);
-            // สร้าง reader/writer แบบบรรทัด
+
             input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             output = new PrintWriter(clientSocket.getOutputStream(), true);
             isConnected = true;
@@ -50,11 +50,6 @@ public class GameClient {
         }
     }
 
-    /**
-     * ลูปอ่านข้อความจาก server ต่อเนื่อง
-     * - ถ้าเจอ null = server ปิด/หลุด → จะหลุดลูปเอง
-     * - ทุกข้อความถูกส่งต่อไปที่ messageListener.onMessageReceived(message)
-     */
     private void listenForMessages() {
         try {
             String message;
@@ -70,7 +65,6 @@ public class GameClient {
         } catch (Exception e) {
             System.err.println("Unexpected error in message listener: " + e.getMessage());
         } finally {
-            // ถ้าหลุด/จบลูป ให้ปิด connection ฝั่ง client
             disconnect();
         }
     }
@@ -87,9 +81,18 @@ public class GameClient {
     public void disconnect() {
         isConnected = false;
         try {
-            if (input != null) input.close();
-            if (output != null) output.close();
-            if (clientSocket != null && !clientSocket.isClosed()) clientSocket.close();
+            if (input != null)
+            {
+                input.close();
+            }
+            if (output != null)
+            {
+                output.close();
+            }
+            if (clientSocket != null && !clientSocket.isClosed())
+            {
+                clientSocket.close();
+            }
         } catch (IOException e) {
             System.err.println("Error closing client connection: " + e.getMessage());
         }
